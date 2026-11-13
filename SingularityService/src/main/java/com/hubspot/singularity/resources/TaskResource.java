@@ -4,12 +4,10 @@ import static com.hubspot.singularity.WebExceptions.badRequest;
 import static com.hubspot.singularity.WebExceptions.checkBadRequest;
 import static com.hubspot.singularity.WebExceptions.checkNotFound;
 import static com.hubspot.singularity.WebExceptions.notFound;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.inject.Inject;
-import com.hubspot.jackson.jaxrs.PropertyFiltering;
 import com.hubspot.mesos.client.MesosClient;
 import com.hubspot.mesos.json.MesosTaskMonitorObject;
 import com.hubspot.mesos.json.MesosTaskStatisticsObject;
@@ -60,6 +58,12 @@ import com.hubspot.singularity.data.TaskManager;
 import com.hubspot.singularity.data.TaskRequestManager;
 import com.hubspot.singularity.helpers.RequestHelper;
 import com.hubspot.singularity.mesos.SingularityMesosSchedulerClient;
+import com.hubspot.singularity.web.Auth;
+import com.hubspot.singularity.web.PathParam;
+import com.hubspot.singularity.web.PropertyFiltering;
+import com.hubspot.singularity.web.QueryParam;
+import com.hubspot.singularity.web.SingularityWebException;
+import com.hubspot.singularity.web.StatusReasons;
 import com.ning.http.client.AsyncHandler;
 import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.AsyncHttpClient.BoundRequestBuilder;
@@ -67,16 +71,16 @@ import com.ning.http.client.HttpResponseBodyPart;
 import com.ning.http.client.HttpResponseHeaders;
 import com.ning.http.client.HttpResponseStatus;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import io.dropwizard.auth.Auth;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.tags.Tags;
+import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.io.OutputStream;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import java.net.ConnectException;
 import java.nio.file.Paths;
 import java.util.Collections;
@@ -86,31 +90,21 @@ import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import javax.activation.MimetypesFileTypeMap;
-import javax.servlet.http.HttpServletRequest;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.WebApplicationException;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.ResponseBuilder;
-import javax.ws.rs.core.Response.Status;
-import javax.ws.rs.core.StreamingOutput;
 import org.apache.curator.framework.recipes.leader.LeaderLatch;
 import org.apache.mesos.v1.Protos.AgentID;
 import org.apache.mesos.v1.Protos.TaskID;
 import org.apache.mesos.v1.scheduler.Protos.Call.Reconcile.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-@Path(ApiPaths.TASK_RESOURCE_PATH)
-@Produces({ MediaType.APPLICATION_JSON })
+@RestController
+@RequestMapping(ApiPaths.TASK_RESOURCE_PATH)
 @Schema(title = "Manage Singularity tasks")
 @Tags({ @Tag(name = "Tasks") })
 public class TaskResource extends AbstractLeaderAwareResource {
@@ -166,9 +160,8 @@ public class TaskResource extends AbstractLeaderAwareResource {
     this.mesosSchedulerClient = mesosSchedulerClient;
   }
 
-  @GET
+  @GetMapping("/scheduled")
   @PropertyFiltering
-  @Path("/scheduled")
   @Operation(summary = "Retrieve list of scheduled tasks")
   public List<SingularityTaskRequest> getScheduledTasks(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -198,9 +191,8 @@ public class TaskResource extends AbstractLeaderAwareResource {
     );
   }
 
-  @GET
+  @GetMapping("/scheduled/ids")
   @PropertyFiltering
-  @Path("/scheduled/ids")
   @Operation(
     summary = "Retrieve list of pending task IDs",
     description = "A list of tasks that are scheduled and waiting to be launched"
@@ -243,9 +235,8 @@ public class TaskResource extends AbstractLeaderAwareResource {
     }
   }
 
-  @GET
+  @GetMapping("/scheduled/task/{pendingTaskId}")
   @PropertyFiltering
-  @Path("/scheduled/task/{pendingTaskId}")
   @Operation(summary = "Retrieve information about a pending task")
   public SingularityTaskRequest getPendingTask(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -274,8 +265,7 @@ public class TaskResource extends AbstractLeaderAwareResource {
     return taskRequestList.get(0);
   }
 
-  @DELETE
-  @Path("/scheduled/task/{scheduledTaskId}")
+  @DeleteMapping("/scheduled/task/{scheduledTaskId}")
   @Operation(
     summary = "Delete a scheduled task by id",
     responses = {
@@ -298,7 +288,7 @@ public class TaskResource extends AbstractLeaderAwareResource {
     @Parameter(description = "The id of the scheduled/pending task to delete") @PathParam(
       "scheduledTaskId"
     ) String taskId,
-    @Context HttpServletRequest requestContext
+    HttpServletRequest requestContext
   ) {
     return maybeProxyToLeader(
       requestContext,
@@ -341,9 +331,8 @@ public class TaskResource extends AbstractLeaderAwareResource {
     return maybePendingTask;
   }
 
-  @GET
+  @GetMapping("/scheduled/request/{requestId}")
   @PropertyFiltering
-  @Path("/scheduled/request/{requestId}")
   @Operation(summary = "Retrieve list of pending/scheduled tasks for a specific request")
   public List<SingularityTaskRequest> getScheduledTasksForRequest(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -368,8 +357,7 @@ public class TaskResource extends AbstractLeaderAwareResource {
     return taskRequestManager.getTaskRequests(tasks);
   }
 
-  @GET
-  @Path("/ids/request/{requestId}")
+  @GetMapping("/ids/request/{requestId}")
   @Operation(
     summary = "Retrieve a list of task ids separated by status",
     description = "Includes pending, active, and cleaning tasks",
@@ -395,8 +383,7 @@ public class TaskResource extends AbstractLeaderAwareResource {
     return requestHelper.getTaskIdsByStatusForRequest(requestId);
   }
 
-  @GET
-  @Path("/counts/request/{requestId}")
+  @GetMapping("/counts/request/{requestId}")
   @Operation(
     summary = "Retrieve a list of task counts separated by status",
     description = "Includes pending, active, and cleaning tasks",
@@ -422,8 +409,7 @@ public class TaskResource extends AbstractLeaderAwareResource {
     return requestHelper.getTaskCountsForRequest(requestId);
   }
 
-  @GET
-  @Path("/active/slave/{agentId}")
+  @GetMapping("/active/slave/{agentId}")
   @Operation(
     summary = "Retrieve list of active tasks on a specific agent",
     responses = {
@@ -446,8 +432,7 @@ public class TaskResource extends AbstractLeaderAwareResource {
     return getTasksForAgent(user, agentId, useWebCache);
   }
 
-  @GET
-  @Path("/active/agent/{agentId}")
+  @GetMapping("/active/agent/{agentId}")
   @Operation(
     summary = "Retrieve list of active tasks on a specific agent",
     responses = {
@@ -485,8 +470,7 @@ public class TaskResource extends AbstractLeaderAwareResource {
     );
   }
 
-  @GET
-  @Path("/active/slave/{agentId}/ids")
+  @GetMapping("/active/slave/{agentId}/ids")
   @Operation(
     summary = "Retrieve list of active tasks on a specific agent",
     responses = {
@@ -509,8 +493,7 @@ public class TaskResource extends AbstractLeaderAwareResource {
     return getTaskIdsForAgent(user, agentId, useWebCache);
   }
 
-  @GET
-  @Path("/active/agent/{agentId}/ids")
+  @GetMapping("/active/agent/{agentId}/ids")
   @Operation(
     summary = "Retrieve list of active tasks on a specific agent",
     responses = {
@@ -548,9 +531,8 @@ public class TaskResource extends AbstractLeaderAwareResource {
     );
   }
 
-  @GET
+  @GetMapping("/active")
   @PropertyFiltering
-  @Path("/active")
   @Operation(summary = "Retrieve the list of active tasks for all requests")
   public List<SingularityTask> getActiveTasks(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -566,9 +548,8 @@ public class TaskResource extends AbstractLeaderAwareResource {
     );
   }
 
-  @GET
+  @GetMapping("/active/ids")
   @PropertyFiltering
-  @Path("/active/ids")
   @Operation(summary = "Retrieve the list of active task ids for all requests")
   public List<SingularityTaskId> getActiveTaskIds(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -584,9 +565,8 @@ public class TaskResource extends AbstractLeaderAwareResource {
     );
   }
 
-  @GET
+  @GetMapping("/active/states")
   @PropertyFiltering
-  @Path("/active/states")
   @Operation(summary = "Retrieve the list of active task ids for all requests")
   public Map<SingularityTaskId, List<SingularityTaskHistoryUpdate>> getActiveTaskStates(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -603,9 +583,8 @@ public class TaskResource extends AbstractLeaderAwareResource {
     return taskManager.getTaskHistoryUpdates(activeTaskIds);
   }
 
-  @GET
+  @GetMapping("/cleaning")
   @PropertyFiltering
-  @Path("/cleaning")
   @Operation(summary = "Retrieve the list of cleaning tasks for all requests")
   public List<SingularityTaskCleanup> getCleaningTasks(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -631,8 +610,7 @@ public class TaskResource extends AbstractLeaderAwareResource {
     );
   }
 
-  @GET
-  @Path("/killed")
+  @GetMapping("/killed")
   @Operation(
     summary = "Retrieve the list of killed task ids for all requests",
     description = "A list of task ids where the task has been sent a kill but has not yet sent a status update with a terminal state"
@@ -648,9 +626,8 @@ public class TaskResource extends AbstractLeaderAwareResource {
     );
   }
 
-  @GET
+  @GetMapping("/lbcleanup")
   @PropertyFiltering
-  @Path("/lbcleanup")
   @Operation(summary = "Retrieve the list of task ids being cleaned from load balancers")
   public List<SingularityTaskId> getLbCleanupTasks(
     @Parameter(hidden = true) @Auth SingularityUser user
@@ -717,8 +694,7 @@ public class TaskResource extends AbstractLeaderAwareResource {
     return task.get();
   }
 
-  @GET
-  @Path("/task/{taskId}")
+  @GetMapping("/task/{taskId}")
   @Operation(
     summary = "Retrieve information about a specific active task",
     responses = {
@@ -735,8 +711,7 @@ public class TaskResource extends AbstractLeaderAwareResource {
     return checkActiveTask(taskId, SingularityAuthorizationScope.READ, user);
   }
 
-  @GET
-  @Path("/task/{taskId}/statistics")
+  @GetMapping("/task/{taskId}/statistics")
   @Operation(
     summary = "Retrieve resource usage statistics about a specific active task",
     responses = {
@@ -780,8 +755,7 @@ public class TaskResource extends AbstractLeaderAwareResource {
     );
   }
 
-  @GET
-  @Path("/task/{taskId}/cleanup")
+  @GetMapping("/task/{taskId}/cleanup")
   @Operation(
     summary = "Get the cleanup object for the task, if it exists",
     responses = {
@@ -804,9 +778,7 @@ public class TaskResource extends AbstractLeaderAwareResource {
     return taskManager.getTaskCleanup(taskId);
   }
 
-  @DELETE
-  @Path("/task/{taskId}")
-  @Operation(
+    @Operation(
     summary = "Trigger a task kill",
     responses = {
       @ApiResponse(
@@ -819,14 +791,12 @@ public class TaskResource extends AbstractLeaderAwareResource {
   public SingularityTaskCleanup killTask(
     @Parameter(hidden = true) @Auth SingularityUser user,
     @Parameter(description = "Id of the task to kill") @PathParam("taskId") String taskId,
-    @Context HttpServletRequest requestContext
+    HttpServletRequest requestContext
   ) {
     return killTask(taskId, requestContext, null, user);
   }
 
-  @DELETE
-  @Path("/task/{taskId}")
-  @Consumes({ MediaType.APPLICATION_JSON })
+  @DeleteMapping(path = "/task/{taskId}")
   @Operation(
     summary = "Attempt to kill task, optionally overriding an existing cleanup request (that may be waiting for replacement tasks to become healthy)",
     responses = {
@@ -842,8 +812,9 @@ public class TaskResource extends AbstractLeaderAwareResource {
   )
   public SingularityTaskCleanup killTask(
     @Parameter(description = "Id of the task to kill") @PathParam("taskId") String taskId,
-    @Context HttpServletRequest requestContext,
-    @RequestBody(
+    HttpServletRequest requestContext,
+    @org.springframework.web.bind.annotation.RequestBody(required = false)
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
       description = "Overrides related to how the task kill is performed"
     ) SingularityKillTaskRequest killTaskRequest,
     @Parameter(hidden = true) @Auth SingularityUser user
@@ -942,13 +913,9 @@ public class TaskResource extends AbstractLeaderAwareResource {
           Optional<SingularityTaskCleanup> cleanup = taskManager.getTaskCleanup(taskId);
 
           if (cleanup.isPresent()) {
-            throw new WebApplicationException(
-              Response
-                .status(Status.CONFLICT)
-                .entity(cleanup.get())
-                .type(MediaType.APPLICATION_JSON)
-                .build()
-            );
+            // The answer carries the status and its reason rather than the cleanup it found, which is
+            // what the API has always answered for a refusal built out of an answer.
+            throw new SingularityWebException(409, StatusReasons.message(409));
           }
 
           result = taskManager.createTaskCleanup(taskCleanup);
@@ -986,8 +953,7 @@ public class TaskResource extends AbstractLeaderAwareResource {
     );
   }
 
-  @GET
-  @Path("/commands/queued")
+  @GetMapping("/commands/queued")
   @Operation(summary = "Retrieve a list of all the shell commands queued for execution")
   public List<SingularityTaskShellCommandRequest> getQueuedShellCommands(
     @Parameter(hidden = true) @Auth SingularityUser user
@@ -996,8 +962,7 @@ public class TaskResource extends AbstractLeaderAwareResource {
     return taskManager.getAllQueuedTaskShellCommandRequests();
   }
 
-  @POST
-  @Path("/task/{taskId}/metadata")
+  @PostMapping(path = "/task/{taskId}/metadata")
   @Operation(
     summary = "Post metadata about a task that will be persisted along with it and displayed in the UI",
     responses = {
@@ -1012,13 +977,13 @@ public class TaskResource extends AbstractLeaderAwareResource {
       )
     }
   )
-  @Consumes({ MediaType.APPLICATION_JSON })
   public void postTaskMetadata(
     @Parameter(hidden = true) @Auth SingularityUser user,
     @Parameter(required = true, description = "Id of the task") @PathParam(
       "taskId"
     ) String taskId,
-    @RequestBody(
+    @org.springframework.web.bind.annotation.RequestBody(required = false)
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
       description = "Metadata to attach to the task",
       required = true
     ) final SingularityTaskMetadataRequest taskMetadataRequest
@@ -1087,8 +1052,7 @@ public class TaskResource extends AbstractLeaderAwareResource {
     );
   }
 
-  @POST
-  @Path("/task/{taskId}/command")
+  @PostMapping(path = "/task/{taskId}/command")
   @Operation(
     summary = "Run a configured shell command against the given task",
     responses = {
@@ -1102,13 +1066,13 @@ public class TaskResource extends AbstractLeaderAwareResource {
       )
     }
   )
-  @Consumes({ MediaType.APPLICATION_JSON })
   public SingularityTaskShellCommandRequest runShellCommand(
     @Parameter(hidden = true) @Auth SingularityUser user,
     @Parameter(required = true, description = "Id of the task") @PathParam(
       "taskId"
     ) String taskId,
-    @RequestBody(
+    @org.springframework.web.bind.annotation.RequestBody(required = false)
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
       required = true,
       description = "Object describing the command to be run"
     ) final SingularityShellCommand shellCommand
@@ -1151,8 +1115,7 @@ public class TaskResource extends AbstractLeaderAwareResource {
     return shellRequest;
   }
 
-  @GET
-  @Path("/task/{taskId}/command")
+  @GetMapping("/task/{taskId}/command")
   @Operation(summary = "Retrieve a list of shell commands that have run for a task")
   public List<SingularityTaskShellCommandHistory> getShellCommandHisotry(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -1170,8 +1133,7 @@ public class TaskResource extends AbstractLeaderAwareResource {
     return taskManager.getTaskShellCommandHistory(taskIdObj);
   }
 
-  @GET
-  @Path("/task/{taskId}/command/{commandName}/{commandTimestamp}")
+  @GetMapping("/task/{taskId}/command/{commandName}/{commandTimestamp}")
   @Operation(
     summary = "Retrieve a list of shell commands updates for a particular shell command on a task"
   )
@@ -1201,11 +1163,9 @@ public class TaskResource extends AbstractLeaderAwareResource {
     );
   }
 
-  @GET
-  @Path("/download/")
-  @Produces(MediaType.APPLICATION_OCTET_STREAM)
+  @GetMapping(path = "/download/", produces = { "application/octet-stream" })
   @Operation(summary = "Proxy a file download from a Mesos Agent through Singularity")
-  public Response downloadFileOverProxy(
+  public ResponseEntity<Object> downloadFileOverProxy(
     @Parameter(required = true, description = "Mesos agent hostname") @QueryParam(
       "slaveHostname"
     ) String slaveHostname,
@@ -1224,11 +1184,9 @@ public class TaskResource extends AbstractLeaderAwareResource {
     );
   }
 
-  @GET
-  @Path("/open/")
-  @Produces("*/*")
+  @GetMapping(path = "/open/", produces = { "*/*" })
   @Operation(summary = "Open a file from a Mesos Slave through Singularity")
-  public Response openFileOverProxy(
+  public ResponseEntity<Object> openFileOverProxy(
     @Parameter(required = true, description = "Mesos agent hostname") @QueryParam(
       "slaveHostname"
     ) String slaveHostname,
@@ -1247,7 +1205,7 @@ public class TaskResource extends AbstractLeaderAwareResource {
     );
   }
 
-  private Response getFile(String agentHostname, String fileFullPath, boolean download) {
+  private ResponseEntity<Object> getFile(String agentHostname, String fileFullPath, boolean download) {
     String httpPrefix = configuration.getAgentHttpsPort().isPresent() ? "https" : "http";
     int httpPort = configuration.getAgentHttpsPort().isPresent()
       ? configuration.getAgentHttpsPort().get()
@@ -1261,7 +1219,7 @@ public class TaskResource extends AbstractLeaderAwareResource {
     );
 
     try {
-      NingOutputToJaxRsStreamingOutputWrapper streamingOutputNingHandler = new NingOutputToJaxRsStreamingOutputWrapper(
+      NingOutputToStreamingBodyWrapper streamingOutputNingHandler = new NingOutputToStreamingBodyWrapper(
         httpClient
           .prepareGet(url)
           .addQueryParam("path", fileFullPath)
@@ -1272,7 +1230,7 @@ public class TaskResource extends AbstractLeaderAwareResource {
       java.nio.file.Path filePath = Paths.get(fileFullPath).getFileName();
       String fileName = filePath != null ? filePath.toString() : fileFullPath;
 
-      ResponseBuilder responseBuilder = Response.ok(streamingOutputNingHandler);
+      ResponseEntity.BodyBuilder responseBuilder = ResponseEntity.ok();
 
       if (download) {
         final String headerValue = String.format("attachment; filename=\"%s\"", fileName);
@@ -1282,7 +1240,7 @@ public class TaskResource extends AbstractLeaderAwareResource {
         final String maybeContentType = fileTypeMap.getContentType(fileFullPath);
         responseBuilder.header("Content-Type", maybeContentType);
       }
-      return responseBuilder.build();
+      return responseBuilder.body(streamingOutputNingHandler);
     } catch (Exception e) {
       if (e.getCause().getClass() == ConnectException.class) {
         throw new AgentNotFoundException(e);
@@ -1292,26 +1250,25 @@ public class TaskResource extends AbstractLeaderAwareResource {
     }
   }
 
-  @POST
-  @Path("/reconcile/{taskId}")
+  @PostMapping("/reconcile/{taskId}")
   @Operation(summary = "Force a reconciliation with the mesos master state for this task")
-  public Response forceReconcile(
+  public ResponseEntity<Object> forceReconcile(
     @Parameter(hidden = true) @Auth SingularityUser user,
     @Parameter(required = true, description = "Id of the task") @PathParam(
       "taskId"
     ) String taskId,
-    @Context HttpServletRequest requestContext
+    HttpServletRequest requestContext
   ) {
     authorizationHelper.checkAdminAuthorization(user);
     return maybeProxyToLeader(
       requestContext,
-      Response.class,
+      ResponseEntity.class,
       null,
       () -> performForceReconcile(taskId)
     );
   }
 
-  private Response performForceReconcile(String taskId) {
+  private ResponseEntity<Object> performForceReconcile(String taskId) {
     Optional<SingularityTask> maybeTask = taskManager.getTask(
       SingularityTaskId.valueOf(taskId)
     );
@@ -1330,18 +1287,18 @@ public class TaskResource extends AbstractLeaderAwareResource {
             .build()
         )
       );
-      return Response.ok().build();
+      return ResponseEntity.ok().build();
     } else {
-      return Response.status(404).build();
+      return ResponseEntity.status(404).build();
     }
   }
 
-  private static class NingOutputToJaxRsStreamingOutputWrapper
-    implements AsyncHandler<Void>, StreamingOutput {
+  private static class NingOutputToStreamingBodyWrapper
+    implements AsyncHandler<Void>, StreamingResponseBody {
     private OutputStream wrappedOutputStream;
     private BoundRequestBuilder requestBuilder;
 
-    public NingOutputToJaxRsStreamingOutputWrapper(BoundRequestBuilder requestBuilder) {
+    public NingOutputToStreamingBodyWrapper(BoundRequestBuilder requestBuilder) {
       this.requestBuilder = requestBuilder;
     }
 
@@ -1386,9 +1343,9 @@ public class TaskResource extends AbstractLeaderAwareResource {
       return null;
     }
 
-    // StreamingOutput implementation: just make the OutputStream available to the AsyncHandler<> implementation.
+    // The body of the answer: just make the OutputStream available to the AsyncHandler<> implementation.
     @Override
-    public void write(OutputStream output) throws WebApplicationException, IOException {
+    public void writeTo(OutputStream output) throws IOException {
       if (wrappedOutputStream == null) {
         wrappedOutputStream = output;
         try {

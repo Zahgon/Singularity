@@ -2,7 +2,7 @@ package com.hubspot.singularity.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import javax.annotation.Nonnegative;
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull;
 
 public class WebhookAuthConfiguration {
   @JsonProperty

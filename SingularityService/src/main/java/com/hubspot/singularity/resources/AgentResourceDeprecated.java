@@ -14,35 +14,31 @@ import com.hubspot.singularity.config.ApiPaths;
 import com.hubspot.singularity.data.AgentManager;
 import com.hubspot.singularity.data.SingularityValidator;
 import com.hubspot.singularity.expiring.SingularityExpiringMachineState;
+import com.hubspot.singularity.web.Auth;
+import com.hubspot.singularity.web.PathParam;
+import com.hubspot.singularity.web.QueryParam;
 import com.ning.http.client.AsyncHttpClient;
-import io.dropwizard.auth.Auth;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.tags.Tags;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Optional;
-import javax.servlet.http.HttpServletRequest;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
 import org.apache.curator.framework.recipes.leader.LeaderLatch;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 /**
  * @deprecated use {@link AgentResource}
  */
-@Path(ApiPaths.SLAVE_RESOURCE_PATH)
-@Produces({ MediaType.APPLICATION_JSON })
+@RestController
+@RequestMapping(ApiPaths.SLAVE_RESOURCE_PATH)
 @Schema(title = "Manages Singularity agents")
 @Tags({ @Tag(name = "Agents") })
 @Deprecated
@@ -72,8 +68,7 @@ public class AgentResourceDeprecated extends AbstractMachineResource<Singularity
     return "Slave";
   }
 
-  @GET
-  @Path("/")
+  @GetMapping("/")
   @Operation(
     summary = "Retrieve the list of all known slaves, optionally filtering by a particular state"
   )
@@ -87,8 +82,7 @@ public class AgentResourceDeprecated extends AbstractMachineResource<Singularity
     return manager.getObjectsFiltered(filterState);
   }
 
-  @GET
-  @Path("/slave/{slaveId}")
+  @GetMapping("/slave/{slaveId}")
   @Operation(summary = "Retrieve the history of a given slave")
   public List<SingularityMachineStateHistoryUpdate> getSlaveHistory(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -100,8 +94,7 @@ public class AgentResourceDeprecated extends AbstractMachineResource<Singularity
     return manager.getHistory(slaveId);
   }
 
-  @GET
-  @Path("/slave/{slaveId}/details")
+  @GetMapping("/slave/{slaveId}/details")
   @Operation(summary = "Get information about a particular slave")
   public Optional<SingularityAgent> getSlave(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -113,13 +106,12 @@ public class AgentResourceDeprecated extends AbstractMachineResource<Singularity
     return manager.getObject(slaveId);
   }
 
-  @DELETE
-  @Path("/slave/{slaveId}")
+  @DeleteMapping("/slave/{slaveId}")
   @Operation(
     summary = "Remove a known slave, erasing history. This operation will cancel decomissioning of the slave"
   )
-  public Response removeSlave(
-    @Context HttpServletRequest requestContext,
+  public ResponseEntity<Object> removeSlave(
+    HttpServletRequest requestContext,
     @Parameter(hidden = true) @Auth SingularityUser user,
     @Parameter(required = true, description = "Active SlaveId") @PathParam(
       "slaveId"
@@ -127,36 +119,35 @@ public class AgentResourceDeprecated extends AbstractMachineResource<Singularity
   ) {
     return maybeProxyToLeader(
       requestContext,
-      Response.class,
+      ResponseEntity.class,
       null,
       () -> {
         super.remove(slaveId, user);
-        return Response.ok().build();
+        return ResponseEntity.ok().build();
       }
     );
   }
 
-  @POST
-  @Path("/slave/{slaveId}/decommission")
+  @PostMapping(path = "/slave/{slaveId}/decommission")
   @Operation(summary = "Begin decommissioning a specific active slave")
-  @Consumes({ MediaType.APPLICATION_JSON })
-  public Response decommissionSlave(
-    @Context HttpServletRequest requestContext,
+  public ResponseEntity<Object> decommissionSlave(
+    HttpServletRequest requestContext,
     @Parameter(hidden = true) @Auth SingularityUser user,
     @Parameter(required = true, description = "Active slaveId") @PathParam(
       "slaveId"
     ) String slaveId,
-    @RequestBody(
+    @org.springframework.web.bind.annotation.RequestBody(required = false)
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
       description = "Settings related to changing the state of a slave"
     ) SingularityMachineChangeRequest changeRequest
   ) {
     return maybeProxyToLeader(
       requestContext,
-      Response.class,
+      ResponseEntity.class,
       changeRequest,
       () -> {
         decommissionSlave(user, slaveId, changeRequest);
-        return Response.ok().build();
+        return ResponseEntity.ok().build();
       }
     );
   }
@@ -177,27 +168,26 @@ public class AgentResourceDeprecated extends AbstractMachineResource<Singularity
     );
   }
 
-  @POST
-  @Path("/slave/{slaveId}/freeze")
+  @PostMapping(path = "/slave/{slaveId}/freeze")
   @Operation(summary = "Freeze tasks on a specific slave")
-  @Consumes({ MediaType.APPLICATION_JSON })
-  public Response freezeSlave(
-    @Context HttpServletRequest requestContext,
+  public ResponseEntity<Object> freezeSlave(
+    HttpServletRequest requestContext,
     @Parameter(hidden = true) @Auth SingularityUser user,
     @Parameter(required = true, description = "Slave ID") @PathParam(
       "slaveId"
     ) String slaveId,
-    @RequestBody(
+    @org.springframework.web.bind.annotation.RequestBody(required = false)
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
       description = "Settings related to changing the state of a slave"
     ) SingularityMachineChangeRequest changeRequest
   ) {
     return maybeProxyToLeader(
       requestContext,
-      Response.class,
+      ResponseEntity.class,
       changeRequest,
       () -> {
         freezeSlave(user, slaveId, changeRequest);
-        return Response.ok().build();
+        return ResponseEntity.ok().build();
       }
     );
   }
@@ -213,29 +203,28 @@ public class AgentResourceDeprecated extends AbstractMachineResource<Singularity
     super.freeze(slaveId, maybeChangeRequest, user, SingularityAction.FREEZE_AGENT);
   }
 
-  @POST
-  @Path("/slave/{slaveId}/activate")
+  @PostMapping(path = "/slave/{slaveId}/activate")
   @Operation(
     summary = "Activate a decomissioning slave, canceling decomission without erasing history"
   )
-  @Consumes({ MediaType.APPLICATION_JSON })
-  public Response activateSlave(
-    @Context HttpServletRequest requestContext,
+  public ResponseEntity<Object> activateSlave(
+    HttpServletRequest requestContext,
     @Parameter(hidden = true) @Auth SingularityUser user,
     @Parameter(required = true, description = "Active slaveId") @PathParam(
       "slaveId"
     ) String slaveId,
-    @RequestBody(
+    @org.springframework.web.bind.annotation.RequestBody(required = false)
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
       description = "Settings related to changing the state of a slave"
     ) SingularityMachineChangeRequest changeRequest
   ) {
     return maybeProxyToLeader(
       requestContext,
-      Response.class,
+      ResponseEntity.class,
       changeRequest,
       () -> {
         activateSlave(user, slaveId, changeRequest);
-        return Response.ok().build();
+        return ResponseEntity.ok().build();
       }
     );
   }
@@ -251,11 +240,10 @@ public class AgentResourceDeprecated extends AbstractMachineResource<Singularity
     super.activate(slaveId, maybeChangeRequest, user, SingularityAction.ACTIVATE_AGENT);
   }
 
-  @DELETE
-  @Path("/slave/{slaveId}/expiring")
+  @DeleteMapping("/slave/{slaveId}/expiring")
   @Operation(summary = "Delete any expiring machine state changes for this slave")
-  public Response deleteExpiringStateChange(
-    @Context HttpServletRequest requestContext,
+  public ResponseEntity<Object> deleteExpiringStateChange(
+    HttpServletRequest requestContext,
     @Parameter(hidden = true) @Auth SingularityUser user,
     @Parameter(required = true, description = "Active slaveId") @PathParam(
       "slaveId"
@@ -263,17 +251,16 @@ public class AgentResourceDeprecated extends AbstractMachineResource<Singularity
   ) {
     return maybeProxyToLeader(
       requestContext,
-      Response.class,
+      ResponseEntity.class,
       null,
       () -> {
         super.cancelExpiring(slaveId, user);
-        return Response.ok().build();
+        return ResponseEntity.ok().build();
       }
     );
   }
 
-  @GET
-  @Path("/expiring")
+  @GetMapping("/expiring")
   @Operation(summary = "Get all expiring state changes for all slaves")
   public List<SingularityExpiringMachineState> getExpiringStateChanges(
     @Parameter(hidden = true) @Auth SingularityUser user
@@ -281,22 +268,21 @@ public class AgentResourceDeprecated extends AbstractMachineResource<Singularity
     return super.getExpiringStateChanges(user);
   }
 
-  @DELETE
-  @Path("/dead")
-  public Response clearAllDeadSlaves(
-    @Context HttpServletRequest requestContext,
+  @DeleteMapping("/dead")
+  public ResponseEntity<Object> clearAllDeadSlaves(
+    HttpServletRequest requestContext,
     @Auth SingularityUser user
   ) {
     return maybeProxyToLeader(
       requestContext,
-      Response.class,
+      ResponseEntity.class,
       null,
       () -> {
         authorizationHelper.checkAdminAuthorization(user);
         manager
           .getObjectsFiltered(MachineState.DEAD)
           .forEach(s -> manager.deleteObject(s.getId()));
-        return Response.ok().build();
+        return ResponseEntity.ok().build();
       }
     );
   }

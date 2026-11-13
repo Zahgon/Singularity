@@ -29,7 +29,6 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import javax.inject.Singleton;
-import javax.ws.rs.core.HttpHeaders;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -357,7 +356,7 @@ public class SingularityWebhookSender extends AbstractWebhookChecker {
   ) {
     LOG.trace("Sending {} to {}", payload, uri);
     BoundRequestBuilder postRequest = http.preparePost(uri);
-    postRequest.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
+    postRequest.setHeader("Content-Type", "application/json");
 
     try {
       postRequest.setBody(objectMapper.writeValueAsBytes(payload));

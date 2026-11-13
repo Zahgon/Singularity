@@ -12,7 +12,9 @@ import com.hubspot.singularity.WebExceptions;
 import com.hubspot.singularity.auth.SingularityAuthorizer;
 import com.hubspot.singularity.config.ApiPaths;
 import com.hubspot.singularity.data.usage.UsageManager;
-import io.dropwizard.auth.Auth;
+import com.hubspot.singularity.web.Auth;
+import com.hubspot.singularity.web.PathParam;
+import com.hubspot.singularity.web.QueryParam;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -22,15 +24,12 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.MediaType;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-@Path(ApiPaths.USAGE_RESOURCE_PATH)
-@Produces({ MediaType.APPLICATION_JSON })
+@RestController
+@RequestMapping(ApiPaths.USAGE_RESOURCE_PATH)
 @Schema(title = "Retrieve usage data about slaves and tasks")
 @Tags({ @Tag(name = "Resource Usage") })
 public class UsageResource {
@@ -46,8 +45,7 @@ public class UsageResource {
     this.authorizationHelper = authorizationHelper;
   }
 
-  @GET
-  @Path("/slaves")
+  @GetMapping("/slaves")
   @Operation(summary = "Retrieve a list of agent resource usage models with agent ids")
   @Deprecated
   public Collection<SingularityAgentUsageWithId> getAgentsWithUsageDeprecated(
@@ -56,8 +54,7 @@ public class UsageResource {
     return getAgentsWithUsage(user);
   }
 
-  @GET
-  @Path("/agents")
+  @GetMapping("/agents")
   @Operation(summary = "Retrieve a list of agent resource usage models with agent ids")
   public Collection<SingularityAgentUsageWithId> getAgentsWithUsage(
     @Parameter(hidden = true) @Auth SingularityUser user
@@ -66,8 +63,7 @@ public class UsageResource {
     return usageManager.getAllCurrentAgentUsage().values();
   }
 
-  @GET
-  @Path("/tasks/{taskId}/history")
+  @GetMapping("/tasks/{taskId}/history")
   @Operation(
     summary = "Retrieve the usage history for a particular task",
     description = "Empty if the task usage has not been collected or has been cleaned up"
@@ -87,8 +83,7 @@ public class UsageResource {
     return usageManager.getTaskUsage(SingularityTaskId.valueOf(taskId));
   }
 
-  @GET
-  @Path("/cluster/utilization")
+  @GetMapping("/cluster/utilization")
   @Operation(
     summary = "GET a summary of utilization for all slaves and requests in the mesos cluster"
   )
@@ -104,8 +99,7 @@ public class UsageResource {
     return usageManager.getClusterUtilization().get();
   }
 
-  @GET
-  @Path("/requests")
+  @GetMapping("/requests")
   public List<RequestUtilization> getRequestUtilizations(
     @Auth SingularityUser user,
     @QueryParam("useWebCache") Boolean useWebCache
@@ -115,8 +109,7 @@ public class UsageResource {
     );
   }
 
-  @GET
-  @Path("/requests/request/{requestId}")
+  @GetMapping("/requests/request/{requestId}")
   public Optional<RequestUtilization> getRequestUtilization(
     @Auth SingularityUser user,
     @PathParam("requestId") String requestId,

@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.google.inject.Inject;
 import com.hubspot.singularity.scheduler.SingularitySchedulerTestBase;
-import io.dropwizard.configuration.ConfigurationSourceProvider;
+import com.hubspot.singularity.config.ConfigurationSourceProvider;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;

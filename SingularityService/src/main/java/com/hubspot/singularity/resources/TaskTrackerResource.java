@@ -13,7 +13,8 @@ import com.hubspot.singularity.config.ApiPaths;
 import com.hubspot.singularity.data.RequestManager;
 import com.hubspot.singularity.data.TaskManager;
 import com.hubspot.singularity.data.history.HistoryManager;
-import io.dropwizard.auth.Auth;
+import com.hubspot.singularity.web.Auth;
+import com.hubspot.singularity.web.PathParam;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -22,14 +23,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.tags.Tags;
 import java.util.Collections;
 import java.util.Optional;
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.MediaType;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-@Path(ApiPaths.TASK_TRACKER_RESOURCE_PATH)
-@Produces({ MediaType.APPLICATION_JSON })
+@RestController
+@RequestMapping(ApiPaths.TASK_TRACKER_RESOURCE_PATH)
 @Schema(title = "Retrieve a task by taskId or runId")
 @Tags({ @Tag(name = "Task Tracking") })
 public class TaskTrackerResource {
@@ -51,8 +50,7 @@ public class TaskTrackerResource {
     this.authorizationHelper = authorizationHelper;
   }
 
-  @GET
-  @Path("/task/{taskId}")
+  @GetMapping("/task/{taskId}")
   @Operation(
     summary = "Get the current state of a task by taskId whether it is active, or inactive",
     responses = {
@@ -73,8 +71,7 @@ public class TaskTrackerResource {
     return getTaskStateFromId(SingularityTaskId.valueOf(taskId));
   }
 
-  @GET
-  @Path("/run/{requestId}/{runId}")
+  @GetMapping("/run/{requestId}/{runId}")
   @Operation(
     summary = "Get the current state of a task by taskId whether it is pending, active, or inactive",
     responses = {

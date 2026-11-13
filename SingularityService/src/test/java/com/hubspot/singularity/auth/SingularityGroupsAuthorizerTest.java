@@ -16,19 +16,17 @@ import com.hubspot.singularity.config.AuthConfiguration;
 import com.hubspot.singularity.config.MesosConfiguration;
 import com.hubspot.singularity.config.SingularityConfiguration;
 import com.hubspot.singularity.data.RequestManager;
-import com.squarespace.jersey2.guice.JerseyGuiceUtils;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
-import javax.ws.rs.WebApplicationException;
+import com.hubspot.singularity.web.SingularityWebException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 public class SingularityGroupsAuthorizerTest {
 
   static {
-    JerseyGuiceUtils.install((s, serviceLocator) -> null);
   }
 
   public static SingularityConfiguration buildAuthDisabledConfig() {
@@ -415,7 +413,7 @@ public class SingularityGroupsAuthorizerTest {
     );
 
     Assertions.assertThrows(
-      WebApplicationException.class,
+      SingularityWebException.class,
       () -> authorizationHelper.checkAdminAuthorization(USER_GROUP_A)
     );
   }
@@ -461,7 +459,7 @@ public class SingularityGroupsAuthorizerTest {
     );
 
     Assertions.assertThrows(
-      WebApplicationException.class,
+      SingularityWebException.class,
       () ->
         authorizationHelper.checkForAuthorizationByRequestId(
           REQUEST_WITH_GROUP_A.getId(),
@@ -499,7 +497,7 @@ public class SingularityGroupsAuthorizerTest {
     );
 
     Assertions.assertThrows(
-      WebApplicationException.class,
+      SingularityWebException.class,
       () ->
         authorizationHelper.checkForAuthorization(
           REQUEST_WITH_GROUP_A,
@@ -537,7 +535,7 @@ public class SingularityGroupsAuthorizerTest {
     );
 
     Assertions.assertThrows(
-      WebApplicationException.class,
+      SingularityWebException.class,
       () ->
         authorizationHelper.checkForAuthorization(
           REQUEST_WITH_GROUP_A_CHANGED_TO_B,
@@ -604,7 +602,7 @@ public class SingularityGroupsAuthorizerTest {
       .build();
 
     Assertions.assertThrows(
-      WebApplicationException.class,
+      SingularityWebException.class,
       () ->
         authorizationHelper.checkForAuthorizedChanges(
           newRequest,

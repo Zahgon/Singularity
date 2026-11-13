@@ -7,8 +7,8 @@ import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import com.hubspot.singularity.AgentPlacement;
 import com.hubspot.singularity.RequestType;
-import io.dropwizard.Configuration;
-import io.dropwizard.db.DataSourceFactory;
+import com.hubspot.singularity.config.server.DataSourceConfiguration;
+import com.hubspot.singularity.config.server.ServiceConfiguration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -17,13 +17,13 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import javax.validation.Valid;
-import javax.validation.constraints.Max;
-import javax.validation.constraints.Min;
-import javax.validation.constraints.NotNull;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class SingularityConfiguration extends Configuration {
+public class SingularityConfiguration extends ServiceConfiguration {
   private boolean allowRequestsWithoutOwners = true;
 
   private boolean allowTestResourceCalls = false;
@@ -119,7 +119,7 @@ public class SingularityConfiguration extends Configuration {
   private long cooldownMinScheduleSeconds = 120;
 
   @JsonProperty("database")
-  private DataSourceFactory databaseConfiguration;
+  private DataSourceConfiguration databaseConfiguration;
 
   @Min(value = 1, message = "Must be positive and non-zero")
   private int defaultBounceExpirationMinutes = 60;
@@ -611,7 +611,7 @@ public class SingularityConfiguration extends Configuration {
     return customExecutorConfiguration;
   }
 
-  public Optional<DataSourceFactory> getDatabaseConfiguration() {
+  public Optional<DataSourceConfiguration> getDatabaseConfiguration() {
     return Optional.ofNullable(databaseConfiguration);
   }
 
@@ -1077,7 +1077,7 @@ public class SingularityConfiguration extends Configuration {
     this.customExecutorConfiguration = customExecutorConfiguration;
   }
 
-  public void setDatabaseConfiguration(DataSourceFactory databaseConfiguration) {
+  public void setDatabaseConfiguration(DataSourceConfiguration databaseConfiguration) {
     this.databaseConfiguration = databaseConfiguration;
   }
 

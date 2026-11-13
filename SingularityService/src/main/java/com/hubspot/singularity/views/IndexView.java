@@ -10,11 +10,11 @@ import com.google.common.io.Resources;
 import com.hubspot.singularity.config.ApiPaths;
 import com.hubspot.singularity.config.IndexViewConfiguration;
 import com.hubspot.singularity.config.UIConfiguration;
-import io.dropwizard.views.View;
 import java.io.IOException;
 import java.util.Map;
 
-public class IndexView extends View {
+public class IndexView {
+  private final String templateName;
   private final String appRoot;
   private final String apiDocs;
   private final String staticRoot;
@@ -81,7 +81,7 @@ public class IndexView extends View {
     IndexViewConfiguration configuration,
     ObjectMapper mapper
   ) {
-    super("index.mustache");
+    this.templateName = "index.mustache";
     checkNotNull(singularityUriBase, "singularityUriBase is null");
 
     UIConfiguration uiConfiguration = configuration.getUiConfiguration();
@@ -354,6 +354,11 @@ public class IndexView extends View {
     return vendorJsPath;
   }
 
+  /** The template the page is written from. */
+  public String getTemplateName() {
+    return templateName;
+  }
+
   public String getShowRequestButtonsForGroup() {
     return showRequestButtonsForGroup;
   }
@@ -472,8 +477,7 @@ public class IndexView extends View {
       ", costsApiUrlFormat='" +
       costsApiUrlFormat +
       '\'' +
-      "} " +
-      super.toString()
+      "}"
     );
   }
 }

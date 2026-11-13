@@ -17,7 +17,7 @@ import com.hubspot.singularity.scheduler.SingularitySchedulerTestBase;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Optional;
-import javax.ws.rs.WebApplicationException;
+import com.hubspot.singularity.web.SingularityWebException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -112,7 +112,7 @@ public class ValidatorTest extends SingularitySchedulerTestBase {
     .build();
 
     Assertions.assertThrows(
-      WebApplicationException.class,
+      SingularityWebException.class,
       () -> validator.checkDeploy(singularityRequest, singularityDeploy)
     );
   }
@@ -133,9 +133,9 @@ public class ValidatorTest extends SingularitySchedulerTestBase {
     boolean thrown = false;
     try {
       validator.checkDeploy(singularityRequest, singularityDeploy);
-    } catch (WebApplicationException exn) {
+    } catch (SingularityWebException exn) {
       Assertions.assertTrue(
-        ((String) exn.getResponse().getEntity()).contains("[a-zA-Z0-9_.]")
+        exn.getDetail().contains("[a-zA-Z0-9_.]")
       );
       thrown = true;
     }
@@ -156,7 +156,7 @@ public class ValidatorTest extends SingularitySchedulerTestBase {
       .build();
 
     Assertions.assertThrows(
-      WebApplicationException.class,
+      SingularityWebException.class,
       () -> validator.checkDeploy(request, deploy)
     );
   }
@@ -176,7 +176,7 @@ public class ValidatorTest extends SingularitySchedulerTestBase {
       .build();
 
     Assertions.assertThrows(
-      WebApplicationException.class,
+      SingularityWebException.class,
       () ->
         validator.checkSingularityRequest(
           request,
@@ -202,7 +202,7 @@ public class ValidatorTest extends SingularitySchedulerTestBase {
       .build();
 
     Assertions.assertThrows(
-      WebApplicationException.class,
+      SingularityWebException.class,
       () ->
         validator.checkSingularityRequest(
           request,
@@ -226,7 +226,7 @@ public class ValidatorTest extends SingularitySchedulerTestBase {
     Optional<SingularityRunNowRequest> runNowRequest = Optional.empty();
 
     Assertions.assertThrows(
-      WebApplicationException.class,
+      SingularityWebException.class,
       () ->
         validator.checkRunNowRequest(deployID, userEmail, request, runNowRequest, 1, 0)
     );
@@ -245,7 +245,7 @@ public class ValidatorTest extends SingularitySchedulerTestBase {
     Optional<SingularityRunNowRequest> runNowRequest = Optional.empty();
 
     Assertions.assertThrows(
-      WebApplicationException.class,
+      SingularityWebException.class,
       () ->
         validator.checkRunNowRequest(deployID, userEmail, request, runNowRequest, 1, 0)
     );
@@ -263,7 +263,7 @@ public class ValidatorTest extends SingularitySchedulerTestBase {
     Optional<SingularityRunNowRequest> runNowRequest = Optional.empty();
 
     Assertions.assertThrows(
-      WebApplicationException.class,
+      SingularityWebException.class,
       () ->
         validator.checkRunNowRequest(deployID, userEmail, request, runNowRequest, 0, 0)
     );
@@ -283,7 +283,7 @@ public class ValidatorTest extends SingularitySchedulerTestBase {
     );
 
     Assertions.assertThrows(
-      WebApplicationException.class,
+      SingularityWebException.class,
       () ->
         validator.checkRunNowRequest(deployID, userEmail, request, runNowRequest, 0, 0)
     );
@@ -379,7 +379,7 @@ public class ValidatorTest extends SingularitySchedulerTestBase {
       .build();
 
     Assertions.assertThrows(
-      WebApplicationException.class,
+      SingularityWebException.class,
       () -> validator.checkDeploy(request, deploy)
     );
   }
@@ -402,7 +402,7 @@ public class ValidatorTest extends SingularitySchedulerTestBase {
       .build();
 
     Assertions.assertThrows(
-      WebApplicationException.class,
+      SingularityWebException.class,
       () -> validator.checkDeploy(request, deploy)
     );
   }
@@ -450,10 +450,10 @@ public class ValidatorTest extends SingularitySchedulerTestBase {
     boolean thrown = false;
     try {
       validator.checkDeploy(request, deploy);
-    } catch (WebApplicationException exn) {
+    } catch (SingularityWebException exn) {
       thrown = true;
       Assertions.assertTrue(
-        ((String) exn.getResponse().getEntity()).contains("Health check startup delay")
+        exn.getDetail().contains("Health check startup delay")
       );
     }
 
@@ -489,10 +489,10 @@ public class ValidatorTest extends SingularitySchedulerTestBase {
     boolean thrown = false;
     try {
       validator.checkDeploy(request, deploy);
-    } catch (WebApplicationException exn) {
+    } catch (SingularityWebException exn) {
       thrown = true;
       Assertions.assertTrue(
-        ((String) exn.getResponse().getEntity()).contains("Max healthcheck time")
+        exn.getDetail().contains("Max healthcheck time")
       );
     }
 
@@ -528,7 +528,7 @@ public class ValidatorTest extends SingularitySchedulerTestBase {
       .setLoadBalanced(Optional.of(true))
       .build();
     Assertions.assertThrows(
-      WebApplicationException.class,
+      SingularityWebException.class,
       () ->
         validator.checkSingularityRequest(
           newRequest,
@@ -552,7 +552,7 @@ public class ValidatorTest extends SingularitySchedulerTestBase {
     )
     .build();
     Assertions.assertThrows(
-      WebApplicationException.class,
+      SingularityWebException.class,
       () ->
         validator.checkSingularityRequest(
           newRequest,

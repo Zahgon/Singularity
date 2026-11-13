@@ -4,7 +4,6 @@ import static com.hubspot.singularity.WebExceptions.badRequest;
 import static com.hubspot.singularity.WebExceptions.checkBadRequest;
 import static com.hubspot.singularity.WebExceptions.checkNotFound;
 import static com.hubspot.singularity.WebExceptions.notFound;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Function;
 import com.google.common.base.Splitter;
@@ -30,8 +29,10 @@ import com.hubspot.singularity.data.SandboxManager.AgentNotFoundException;
 import com.hubspot.singularity.data.TaskManager;
 import com.hubspot.singularity.data.history.HistoryManager;
 import com.hubspot.singularity.mesos.SingularityMesosExecutorInfoSupport;
+import com.hubspot.singularity.web.Auth;
+import com.hubspot.singularity.web.PathParam;
+import com.hubspot.singularity.web.QueryParam;
 import com.ning.http.client.AsyncHttpClient;
-import io.dropwizard.auth.Auth;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -43,16 +44,13 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.MediaType;
 import org.apache.curator.framework.recipes.leader.LeaderLatch;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-@Path(ApiPaths.SANDBOX_RESOURCE_PATH)
-@Produces({ MediaType.APPLICATION_JSON })
+@RestController
+@RequestMapping(ApiPaths.SANDBOX_RESOURCE_PATH)
 @Schema(title = "Provides a proxy to Mesos sandboxes")
 @Tags({ @Tag(name = "Sandbox") })
 public class SandboxResource extends AbstractHistoryResource {
@@ -113,8 +111,7 @@ public class SandboxResource extends AbstractHistoryResource {
     return "";
   }
 
-  @GET
-  @Path("/{taskId}/browse")
+  @GetMapping("/{taskId}/browse")
   @Operation(
     summary = "Retrieve information about a specific task's sandbox",
     responses = {
@@ -181,8 +178,7 @@ public class SandboxResource extends AbstractHistoryResource {
     }
   }
 
-  @GET
-  @Path("/{taskId}/read")
+  @GetMapping("/{taskId}/read")
   @Operation(
     summary = "Retrieve part of the contents of a file in a specific task's sandbox",
     responses = {

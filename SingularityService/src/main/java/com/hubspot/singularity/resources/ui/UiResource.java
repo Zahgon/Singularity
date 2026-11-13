@@ -8,16 +8,16 @@ import com.hubspot.singularity.Singularity;
 import com.hubspot.singularity.config.IndexViewConfiguration;
 import com.hubspot.singularity.resources.SingularityServiceUIModule;
 import com.hubspot.singularity.views.IndexView;
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.MediaType;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Serves as the base for the UI, returns the mustache view for the actual GUI.
  */
 @Singleton
-@Path(UiResource.UI_RESOURCE_LOCATION + "{uiPath:.*}")
+@RestController
+@RequestMapping(UiResource.UI_RESOURCE_LOCATION + "{uiPath:.*}")
 public class UiResource {
   public static final String UI_RESOURCE_LOCATION = "/ui/";
 
@@ -36,8 +36,7 @@ public class UiResource {
     this.mapper = mapper;
   }
 
-  @GET
-  @Produces(MediaType.TEXT_HTML)
+  @GetMapping(produces = { "text/html" })
   public IndexView getIndex() {
     return new IndexView(singularityUriBase, UI_RESOURCE_LOCATION, configuration, mapper);
   }

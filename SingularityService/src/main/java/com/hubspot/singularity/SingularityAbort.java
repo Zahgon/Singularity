@@ -20,7 +20,6 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.inject.Named;
 import javax.inject.Singleton;
-import org.eclipse.jetty.server.Server;
 import org.slf4j.ILoggerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -90,10 +89,10 @@ public class SingularityAbort {
   }
 
   private void exit() {
-    Optional<Server> server = serverProvider.get();
+    Optional<Runnable> server = serverProvider.get();
     if (server.isPresent()) {
       try {
-        server.get().stop();
+        server.get().run();
       } catch (Exception e) {
         LOG.warn("While aborting server", e);
       } finally {

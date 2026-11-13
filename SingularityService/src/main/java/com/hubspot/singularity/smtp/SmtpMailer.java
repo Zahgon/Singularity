@@ -38,7 +38,7 @@ import com.hubspot.singularity.data.history.TaskHistoryHelper;
 import com.hubspot.singularity.sentry.SingularityExceptionNotifier;
 import de.neuland.jade4j.Jade4J;
 import de.neuland.jade4j.template.JadeTemplate;
-import io.dropwizard.lifecycle.Managed;
+import com.hubspot.singularity.managed.Managed;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;

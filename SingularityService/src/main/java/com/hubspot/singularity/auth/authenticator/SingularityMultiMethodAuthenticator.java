@@ -1,21 +1,19 @@
 package com.hubspot.singularity.auth.authenticator;
 
+import com.hubspot.singularity.web.SingularityRequestContext;
 import com.hubspot.singularity.SingularityUser;
 import com.hubspot.singularity.WebExceptions;
 import com.hubspot.singularity.config.SingularityConfiguration;
-import io.dropwizard.auth.Authenticator;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import javax.ws.rs.WebApplicationException;
-import javax.ws.rs.container.ContainerRequestContext;
+import com.hubspot.singularity.web.SingularityWebException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class SingularityMultiMethodAuthenticator
-  implements Authenticator<ContainerRequestContext, SingularityUser> {
+public class SingularityMultiMethodAuthenticator {
   private static final Logger LOG = LoggerFactory.getLogger(
     SingularityMultiMethodAuthenticator.class
   );
@@ -32,7 +30,7 @@ public class SingularityMultiMethodAuthenticator
     this.configuration = configuration;
   }
 
-  public Optional<SingularityUser> authenticate(ContainerRequestContext context) {
+  public Optional<SingularityUser> authenticate(SingularityRequestContext context) {
     List<String> unauthorizedExceptionMessages = new ArrayList<>();
     for (SingularityAuthenticator authenticator : authenticators) {
       try {
@@ -44,13 +42,13 @@ public class SingularityMultiMethodAuthenticator
         if (LOG.isTraceEnabled()) {
           LOG.trace("Exception in {}", authenticator.getClass().getSimpleName(), t);
         }
-        if (t instanceof WebApplicationException) {
-          WebApplicationException wae = (WebApplicationException) t;
+        if (t instanceof SingularityWebException) {
+          SingularityWebException wae = (SingularityWebException) t;
           unauthorizedExceptionMessages.add(
             String.format(
               "%s (%s)",
               authenticator.getClass().getSimpleName(),
-              wae.getResponse().getEntity().toString()
+              wae.getDetail()
             )
           );
         } else {

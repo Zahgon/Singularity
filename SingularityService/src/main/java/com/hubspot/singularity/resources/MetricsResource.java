@@ -14,13 +14,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.tags.Tags;
 import java.util.HashMap;
 import java.util.Map;
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.MediaType;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-@Path(ApiPaths.METRICS_RESOURCE_PATH)
-@Produces({ MediaType.APPLICATION_JSON })
+@RestController
+@RequestMapping(ApiPaths.METRICS_RESOURCE_PATH)
 @Schema(title = "Retrieve metrics from the Singularity scheduler")
 @Tags({ @Tag(name = "Metrics") })
 public class MetricsResource {
@@ -39,7 +38,7 @@ public class MetricsResource {
     this.taskManager = taskManager;
   }
 
-  @GET
+  @GetMapping
   @Operation(summary = "Retrieve metrics from this scheduler instance")
   public SingularityMetricsContainer getRegistry() {
     Map<String, Metric> metrics = new HashMap<>(registry.getMetrics());
@@ -48,8 +47,7 @@ public class MetricsResource {
     return new SingularityMetricsContainer(metrics);
   }
 
-  @GET
-  @Path("/zk-bytes")
+  @GetMapping("/zk-bytes")
   public Map<String, Long> getZkBytesMetrics() {
     return ImmutableMap.of(
       "allRequestIds",

@@ -85,7 +85,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
-import javax.ws.rs.WebApplicationException;
+import com.hubspot.singularity.web.SingularityWebException;
 import org.apache.mesos.v1.Protos.AgentID;
 import org.apache.mesos.v1.Protos.Offer;
 import org.apache.mesos.v1.Protos.TaskID;
@@ -4107,7 +4107,7 @@ public class SingularitySchedulerTest extends SingularitySchedulerTestBase {
       .build();
 
     Assertions.assertThrows(
-      WebApplicationException.class,
+      SingularityWebException.class,
       () -> requestResource.postRequest(req, singularityUser)
     );
   }

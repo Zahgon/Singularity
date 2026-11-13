@@ -2,11 +2,9 @@ package com.hubspot.singularity;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.inject.Module;
+import com.hubspot.singularity.cli.Command;
 import com.hubspot.singularity.config.SingularityConfiguration;
-import io.dropwizard.Bundle;
-import io.dropwizard.ConfiguredBundle;
-import io.dropwizard.setup.Bootstrap;
-import io.dropwizard.setup.Environment;
+import org.springframework.boot.builder.SpringApplicationBuilder;
 
 /**
  * Example on how to embed Singularity into another piece of code or how to extend Singularity with additional
@@ -20,38 +18,23 @@ public class EmbeddedSingularityExample
   extends SingularityService<SingularityConfiguration> {
 
   @Override
-  public Iterable<? extends Module> getGuiceModules(
-    final Bootstrap<SingularityConfiguration> bootstrap
-  ) {
+  public Iterable<? extends Module> getGuiceModules() {
     return ImmutableSet.of();
   }
 
   @Override
-  public Iterable<? extends Bundle> getDropwizardBundles(
-    final Bootstrap<SingularityConfiguration> bootstrap
-  ) {
+  public Iterable<? extends Command> getAdditionalCommands() {
     return ImmutableSet.of();
   }
 
   @Override
-  public Iterable<? extends ConfiguredBundle<SingularityConfiguration>> getDropwizardConfiguredBundles(
-    final Bootstrap<SingularityConfiguration> bootstrap
-  ) {
-    return ImmutableSet.of();
+  public void initialize() {
+    super.initialize();
   }
 
   @Override
-  public void initialize(final Bootstrap<SingularityConfiguration> bootstrap) {
-    super.initialize(bootstrap);
-  }
-
-  @Override
-  public void run(
-    final SingularityConfiguration configuration,
-    final Environment environment
-  )
-    throws Exception {
-    super.run(configuration, environment);
+  public void modifyApplication(final SpringApplicationBuilder builder) {
+    super.modifyApplication(builder);
   }
 
   public static void main(final String[] args) throws Exception {

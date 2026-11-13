@@ -8,13 +8,13 @@ import com.hubspot.singularity.Singularity;
 import com.hubspot.singularity.config.IndexViewConfiguration;
 import com.hubspot.singularity.resources.SingularityServiceUIModule;
 import com.hubspot.singularity.views.IndexView;
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.MediaType;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @Singleton
-@Path("/{uiPath:.*}")
+@RestController
+@RequestMapping("/{uiPath:.*}")
 public class StaticCatchallResource {
   private final IndexViewConfiguration configuration;
   private final String singularityUriBase;
@@ -31,8 +31,7 @@ public class StaticCatchallResource {
     this.mapper = mapper;
   }
 
-  @GET
-  @Produces(MediaType.TEXT_HTML)
+  @GetMapping(produces = { "text/html" })
   public IndexView getIndex() {
     return new IndexView(singularityUriBase, "", configuration, mapper);
   }

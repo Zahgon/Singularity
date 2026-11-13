@@ -11,8 +11,10 @@ import java.io.IOException;
 import java.util.Enumeration;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Supplier;
-import javax.servlet.http.HttpServletRequest;
-import javax.ws.rs.WebApplicationException;
+import jakarta.servlet.http.HttpServletRequest;
+import com.hubspot.singularity.web.SingularityWebException;
+import com.hubspot.singularity.web.StatusReasons;
+import org.springframework.http.ResponseEntity;
 import org.apache.curator.framework.recipes.leader.LeaderLatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,9 +83,9 @@ public class AbstractLeaderAwareResource {
         requestBuilder = httpClient.prepareDelete(url);
         break;
       default:
-        throw new WebApplicationException(
-          String.format("Not meant to proxy request of method %s", request.getMethod()),
-          400
+        throw new SingularityWebException(
+          400,
+          String.format("Not meant to proxy request of method %s", request.getMethod())
         );
     }
 
@@ -94,7 +96,7 @@ public class AbstractLeaderAwareResource {
       }
     } catch (JsonProcessingException jpe) {
       LOG.error("Could not write body from object {}", body);
-      throw new WebApplicationException(jpe, 500);
+      throw new SingularityWebException(500, StatusReasons.message(500));
     }
 
     copyHeadersAndParams(requestBuilder, request);
@@ -106,21 +108,20 @@ public class AbstractLeaderAwareResource {
       response = httpClient.executeRequest(httpRequest).get();
     } catch (ExecutionException | InterruptedException e) {
       LOG.error("Could not proxy request {} to leader", e);
-      throw new WebApplicationException(e, 500);
+      throw new SingularityWebException(500, StatusReasons.message(500));
     }
 
     try {
-      if (clazz.isAssignableFrom(javax.ws.rs.core.Response.class)) {
-        return (T) javax
-          .ws.rs.core.Response.status(response.getStatusCode())
-          .entity(response.getResponseBody())
-          .build();
+      if (clazz.isAssignableFrom(ResponseEntity.class)) {
+        return (T) ResponseEntity
+          .status(response.getStatusCode())
+          .body(response.getResponseBody());
       }
 
       if (response.getStatusCode() > 399) {
-        throw new WebApplicationException(
-          response.getResponseBody(Charsets.UTF_8.toString()),
-          response.getStatusCode()
+        throw new SingularityWebException(
+          response.getStatusCode(),
+          response.getResponseBody(Charsets.UTF_8.toString())
         );
       } else {
         return objectMapper.readValue(response.getResponseBodyAsStream(), clazz);
@@ -131,7 +132,7 @@ public class AbstractLeaderAwareResource {
         response.getStatusCode()
       );
       LOG.error(message, ioe);
-      throw new WebApplicationException(message, ioe, 500);
+      throw new SingularityWebException(500, message);
     }
   }
 

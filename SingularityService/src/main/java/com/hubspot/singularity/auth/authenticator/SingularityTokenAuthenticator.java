@@ -7,11 +7,11 @@ import com.google.common.cache.LoadingCache;
 import com.google.common.net.HttpHeaders;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import com.hubspot.singularity.web.SingularityRequestContext;
 import com.hubspot.singularity.SingularityUser;
 import com.hubspot.singularity.WebExceptions;
 import com.hubspot.singularity.data.AuthTokenManager;
 import java.util.concurrent.TimeUnit;
-import javax.ws.rs.container.ContainerRequestContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,7 +43,7 @@ public class SingularityTokenAuthenticator implements SingularityAuthenticator {
   }
 
   @Override
-  public java.util.Optional<SingularityUser> getUser(ContainerRequestContext context) {
+  public java.util.Optional<SingularityUser> getUser(SingularityRequestContext context) {
     String token = extractToken(context);
     try {
       return java.util.Optional.of(tokenCache.get(token));
@@ -64,7 +64,7 @@ public class SingularityTokenAuthenticator implements SingularityAuthenticator {
     }
   }
 
-  private String extractToken(ContainerRequestContext context) {
+  private String extractToken(SingularityRequestContext context) {
     final String authHeaderValue = context.getHeaderString(HttpHeaders.AUTHORIZATION);
     if (Strings.isNullOrEmpty(authHeaderValue)) {
       throw WebExceptions.unauthorized(

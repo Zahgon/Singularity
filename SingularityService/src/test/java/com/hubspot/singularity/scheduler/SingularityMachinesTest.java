@@ -31,7 +31,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import javax.ws.rs.WebApplicationException;
+import com.hubspot.singularity.web.SingularityWebException;
 import org.apache.mesos.v1.Protos.AgentID;
 import org.apache.mesos.v1.Protos.TaskState;
 import org.junit.jupiter.api.Assertions;
@@ -1246,7 +1246,7 @@ public class SingularityMachinesTest extends SingularitySchedulerTestBase {
   public void testCannotUseStateReservedForSystem() {
     SingularityAgent agent = getSingleSlave();
     Assertions.assertThrows(
-      WebApplicationException.class,
+      SingularityWebException.class,
       () ->
         agentResource.freezeAgent(
           singularityUser,
@@ -1266,7 +1266,7 @@ public class SingularityMachinesTest extends SingularitySchedulerTestBase {
   public void testBadExpiringStateTransition() {
     SingularityAgent agent = getSingleSlave();
     Assertions.assertThrows(
-      WebApplicationException.class,
+      SingularityWebException.class,
       () ->
         agentResource.decommissionAgent(
           singularityUser,
@@ -1286,7 +1286,7 @@ public class SingularityMachinesTest extends SingularitySchedulerTestBase {
   public void testInvalidTransitionToDecommissioned() {
     SingularityAgent agent = getSingleSlave();
     Assertions.assertThrows(
-      WebApplicationException.class,
+      SingularityWebException.class,
       () ->
         agentResource.decommissionAgent(
           singularityUser,

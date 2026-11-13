@@ -16,27 +16,24 @@ import com.hubspot.singularity.auth.SingularityAuthorizer;
 import com.hubspot.singularity.config.ApiPaths;
 import com.hubspot.singularity.data.SingularityValidator;
 import com.hubspot.singularity.data.WebhookManager;
-import io.dropwizard.auth.Auth;
+import com.hubspot.singularity.web.Auth;
+import com.hubspot.singularity.web.PathParam;
+import com.hubspot.singularity.web.QueryParam;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.tags.Tags;
 import java.util.List;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.MediaType;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-@Path(ApiPaths.WEBHOOK_RESOURCE_PATH)
-@Produces({ MediaType.APPLICATION_JSON })
+@RestController
+@RequestMapping(ApiPaths.WEBHOOK_RESOURCE_PATH)
 @Schema(title = "Manage Singularity webhooks")
 @Tags({ @Tag(name = "Webhooks") })
 public class WebhookResource {
@@ -55,7 +52,7 @@ public class WebhookResource {
     this.validator = validator;
   }
 
-  @GET
+  @GetMapping
   @Operation(summary = "Retrieve a list of active webhooks.")
   public List<SingularityWebhook> getActiveWebhooks(
     @Parameter(hidden = true) @Auth SingularityUser user
@@ -64,8 +61,7 @@ public class WebhookResource {
     return webhookManager.getActiveWebhooksUncached();
   }
 
-  @GET
-  @Path("/summary")
+  @GetMapping("/summary")
   @Operation(summary = "Retrieve a summary of each active webhook")
   public List<SingularityWebhookSummary> getWebhooksWithQueueSize(
     @Parameter(hidden = true) @Auth SingularityUser user
@@ -74,8 +70,7 @@ public class WebhookResource {
     return webhookManager.getWebhooksWithQueueSize();
   }
 
-  @POST
-  @Consumes({ MediaType.APPLICATION_JSON })
+  @PostMapping
   @Operation(
     summary = "Add a new webhook",
     responses = {
@@ -87,7 +82,8 @@ public class WebhookResource {
   )
   public SingularityCreateResult addWebhook(
     @Parameter(hidden = true) @Auth SingularityUser user,
-    @RequestBody(
+    @org.springframework.web.bind.annotation.RequestBody(required = false)
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
       required = true,
       description = "SingularityWebhook object describing the new webhook to be added"
     ) SingularityWebhook webhook
@@ -98,9 +94,8 @@ public class WebhookResource {
     return webhookManager.addWebhook(webhook);
   }
 
-  @DELETE
+  @DeleteMapping("/{webhookId}")
   @Deprecated
-  @Path("/{webhookId}")
   @Operation(
     summary = "Delete a specific webhook",
     responses = {
@@ -121,9 +116,8 @@ public class WebhookResource {
     return webhookManager.deleteWebhook(JavaUtils.urlEncode(webhookId));
   }
 
-  @GET
+  @GetMapping("/deploy/{webhookId}")
   @Deprecated
-  @Path("/deploy/{webhookId}")
   @Operation(summary = "Retrieve a list of queued deploy updates for a specific webhook")
   public List<SingularityDeployUpdate> getQueuedDeployUpdatesDeprecated(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -136,9 +130,8 @@ public class WebhookResource {
     return webhookManager.getQueuedDeployUpdatesForHook(JavaUtils.urlEncode(webhookId));
   }
 
-  @GET
+  @GetMapping("/request/{webhookId}")
   @Deprecated
-  @Path("/request/{webhookId}")
   @Operation(summary = "Retrieve a list of queued request updates for a specific webhook")
   public List<SingularityRequestHistory> getQueuedRequestUpdatesDeprecated(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -151,9 +144,8 @@ public class WebhookResource {
     return webhookManager.getQueuedRequestHistoryForHook(JavaUtils.urlEncode(webhookId));
   }
 
-  @GET
+  @GetMapping("/task/{webhookId}")
   @Deprecated
-  @Path("/task/{webhookId}")
   @Operation(summary = "Retrieve a list of queued task updates for a specific webhook")
   public List<SingularityTaskHistoryUpdate> getQueuedTaskUpdatesDeprecated(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -166,7 +158,7 @@ public class WebhookResource {
     return webhookManager.getQueuedTaskUpdatesForHook(JavaUtils.urlEncode(webhookId));
   }
 
-  @DELETE
+  @DeleteMapping
   @Operation(summary = "Delete a specific webhook by id")
   public SingularityDeleteResult deleteWebhook(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -179,8 +171,7 @@ public class WebhookResource {
     return webhookManager.deleteWebhook(JavaUtils.urlEncode(webhookId));
   }
 
-  @GET
-  @Path("/deploy")
+  @GetMapping("/deploy")
   @Operation(summary = "Retrieve a list of queued deploy updates for a specific webhook")
   public List<SingularityDeployUpdate> getQueuedDeployUpdates(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -193,8 +184,7 @@ public class WebhookResource {
     return webhookManager.getQueuedDeployUpdatesForHook(JavaUtils.urlEncode(webhookId));
   }
 
-  @GET
-  @Path("/request")
+  @GetMapping("/request")
   @Operation(
     summary = "Retrieve a list of queued request updates for a specific webhook."
   )
@@ -208,8 +198,7 @@ public class WebhookResource {
     return webhookManager.getQueuedRequestHistoryForHook(JavaUtils.urlEncode(webhookId));
   }
 
-  @GET
-  @Path("/task")
+  @GetMapping("/task")
   @Operation(summary = "Retrieve a list of queued task updates for a specific webhook.")
   public List<SingularityTaskHistoryUpdate> getQueuedTaskUpdates(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -222,8 +211,7 @@ public class WebhookResource {
     return webhookManager.getQueuedTaskUpdatesForHook(JavaUtils.urlEncode(webhookId));
   }
 
-  @GET
-  @Path("/elevated-access")
+  @GetMapping("/elevated-access")
   @Operation(
     summary = "Retrieve a list of queued elevated access updates for a specific webhook."
   )

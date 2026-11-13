@@ -11,10 +11,137 @@
   <artifactId>SingularityService</artifactId>
 
   <properties>
-    <basepom.shaded.main-class>com.hubspot.singularity.SingularityService</basepom.shaded.main-class>
+    <!-- The module takes the library versions the new framework manages rather than the ones the parent
+         project pins for the modules that stay on the old one, so the parent's check that every module
+         agrees on a version does not apply to it. -->
+    <basepom.check.skip-dependency-versions-check>true</basepom.check.skip-dependency-versions-check>
+    <basepom.check.skip-dependency-management>true</basepom.check.skip-dependency-management>
+    <!-- The parent project's dependency analysis reads class files with a reader that does not know
+         the class format of the JDK this module is built for. -->
+    <basepom.check.skip-dependency>true</basepom.check.skip-dependency>
+    <!-- The parent project's bug finder cannot read them either. -->
+    <basepom.check.skip-findbugs>true</basepom.check.skip-findbugs>
+    <!-- Nor can its source analyser, which knows no newer language level than the parent's. -->
+    <basepom.check.skip-pmd>true</basepom.check.skip-pmd>
+    <!-- Spring Boot needs Java 17; the rest of the reactor keeps the JDK the root pom targets. -->
+    <project.build.targetJdk>17</project.build.targetJdk>
+    <spring-boot.version>3.5.16</spring-boot.version>
+    <!-- The logging libraries the new framework is built against; the modules that stay on the old
+         framework keep the ones the parent project pins. -->
+    <!-- The object graph is built by a line of the injector that reads the class format of the JDK
+         this module is built for. -->
+    <!-- The line of the state store's client that runs on the JDK this module is built for, and the
+         line of its embedded server that goes with it, for this module alone. -->
+    <dep.zookeeper.version>3.5.10</dep.zookeeper.version>
+    <!-- The line of the serialisation library the new framework needs, for this module alone. -->
+    <dep.jackson-databind.version>2.19.4</dep.jackson-databind.version>
+    <dep.jackson.version>2.19.4</dep.jackson.version>
+    <dep.guice.version>5.1.0</dep.guice.version>
+    <dep.logback.version>1.5.34</dep.logback.version>
+    <dep.slf4j.version>2.0.18</dep.slf4j.version>
+    <springdoc.version>2.8.17</springdoc.version>
+    <mustache.version>0.9.14</mustache.version>
+    <argparse4j.version>0.8.1</argparse4j.version>
   </properties>
 
+  <dependencyManagement>
+    <dependencies>
+      <!-- The test framework the repository pins, imported ahead of the new framework's own bill of
+           materials so that the module's tests go on running on the line they were written for: the first
+           import of a managed version is the one that holds. -->
+      <dependency>
+        <groupId>org.junit</groupId>
+        <artifactId>junit-bom</artifactId>
+        <version>${dep.junit-jupiter.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <!-- The line of the serialisation library the new framework needs, for this module alone; the modules
+           that stay on the old framework keep the one the parent project pins. -->
+      <dependency>
+        <groupId>com.fasterxml.jackson</groupId>
+        <artifactId>jackson-bom</artifactId>
+        <version>2.19.4</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-dependencies</artifactId>
+        <version>${spring-boot.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <!-- The YAML reader the serialisation library of this module needs; the modules that stay on the
+           old framework keep the one the parent project pins. -->
+      <dependency>
+        <groupId>org.yaml</groupId>
+        <artifactId>snakeyaml</artifactId>
+        <version>2.4</version>
+      </dependency>
+      <!-- The embedded state store the module's own tests start: the line that goes with the ZooKeeper
+           client this module takes, because the older line's server does not run on the JDK this module is
+           built for. The modules that stay on the old framework keep the line the parent project pins. -->
+      <dependency>
+        <groupId>org.apache.curator</groupId>
+        <artifactId>curator-test</artifactId>
+        <version>${dep.curator.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>log4j</groupId>
+            <artifactId>log4j</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-log4j12</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.apache.zookeeper</groupId>
+            <artifactId>zookeeper</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
   <dependencies>
+
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-validation</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-jdbc</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.springdoc</groupId>
+      <artifactId>springdoc-openapi-starter-webmvc-api</artifactId>
+      <version>${springdoc.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>com.github.spullara.mustache.java</groupId>
+      <artifactId>compiler</artifactId>
+      <version>${mustache.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>net.sourceforge.argparse4j</groupId>
+      <artifactId>argparse4j</artifactId>
+      <version>${argparse4j.version}</version>
+    </dependency>
 
     <dependency>
       <groupId>ch.qos.logback</groupId>
@@ -65,6 +192,11 @@
       <groupId>com.fasterxml.jackson.datatype</groupId>
       <artifactId>jackson-datatype-jdk8</artifactId>
     </dependency>
+
+    <dependency>
+      <groupId>com.fasterxml.jackson.datatype</groupId>
+      <artifactId>jackson-datatype-joda</artifactId>
+    </dependency>
     <dependency>
       <groupId>com.github.rholder</groupId>
       <artifactId>guava-retrying</artifactId>
@@ -106,18 +238,8 @@
     </dependency>
 
     <dependency>
-      <groupId>com.hubspot.dropwizard</groupId>
-      <artifactId>dropwizard-guicier</artifactId>
-    </dependency>
-
-    <dependency>
       <groupId>com.hubspot.jackson</groupId>
       <artifactId>jackson-datatype-protobuf</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>com.hubspot.jackson</groupId>
-      <artifactId>jackson-jaxrs-propertyfiltering</artifactId>
     </dependency>
 
     <dependency>
@@ -141,11 +263,6 @@
     </dependency>
 
     <dependency>
-      <groupId>com.squarespace.jersey2-guice</groupId>
-      <artifactId>jersey2-guice-impl</artifactId>
-    </dependency>
-
-    <dependency>
       <groupId>com.squareup.okhttp3</groupId>
       <artifactId>okhttp</artifactId>
     </dependency>
@@ -166,73 +283,18 @@
     </dependency>
 
     <dependency>
-      <groupId>io.dropwizard</groupId>
-      <artifactId>dropwizard-assets</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>io.dropwizard</groupId>
-      <artifactId>dropwizard-auth</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>io.dropwizard</groupId>
-      <artifactId>dropwizard-configuration</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>io.dropwizard</groupId>
-      <artifactId>dropwizard-core</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>io.dropwizard</groupId>
-      <artifactId>dropwizard-db</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>io.dropwizard</groupId>
-      <artifactId>dropwizard-jackson</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>io.dropwizard</groupId>
-      <artifactId>dropwizard-jdbi3</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>io.dropwizard</groupId>
-      <artifactId>dropwizard-jersey</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>io.dropwizard</groupId>
-      <artifactId>dropwizard-jetty</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>io.dropwizard</groupId>
-      <artifactId>dropwizard-lifecycle</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>io.dropwizard</groupId>
-      <artifactId>dropwizard-migrations</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>io.dropwizard</groupId>
-      <artifactId>dropwizard-util</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>io.dropwizard</groupId>
-      <artifactId>dropwizard-views</artifactId>
+      <groupId>io.dropwizard.metrics</groupId>
+      <artifactId>metrics-annotation</artifactId>
     </dependency>
 
     <dependency>
       <groupId>io.dropwizard.metrics</groupId>
-      <artifactId>metrics-annotation</artifactId>
+      <artifactId>metrics-json</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>io.dropwizard.metrics</groupId>
+      <artifactId>metrics-jvm</artifactId>
     </dependency>
 
     <dependency>
@@ -271,11 +333,6 @@
     </dependency>
 
     <dependency>
-      <groupId>io.swagger.core.v3</groupId>
-      <artifactId>swagger-jaxrs2</artifactId>
-    </dependency>
-
-    <dependency>
       <groupId>javax.activation</groupId>
       <artifactId>activation</artifactId>
     </dependency>
@@ -283,21 +340,6 @@
     <dependency>
       <groupId>javax.inject</groupId>
       <artifactId>javax.inject</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>javax.servlet</groupId>
-      <artifactId>javax.servlet-api</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>javax.validation</groupId>
-      <artifactId>validation-api</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>javax.ws.rs</groupId>
-      <artifactId>javax.ws.rs-api</artifactId>
     </dependency>
 
     <dependency>
@@ -361,36 +403,6 @@
     </dependency>
 
     <dependency>
-      <groupId>org.eclipse.jetty</groupId>
-      <artifactId>jetty-server</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>org.eclipse.jetty</groupId>
-      <artifactId>jetty-servlets</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>org.eclipse.jetty</groupId>
-      <artifactId>jetty-util</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>org.glassfish.hk2</groupId>
-      <artifactId>hk2-api</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>org.glassfish.jersey.core</groupId>
-      <artifactId>jersey-server</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>org.hibernate</groupId>
-      <artifactId>hibernate-validator</artifactId>
-    </dependency>
-
-    <dependency>
       <groupId>org.iq80.snappy</groupId>
       <artifactId>snappy</artifactId>
     </dependency>
@@ -433,12 +445,6 @@
     <dependency>
       <groupId>com.hubspot</groupId>
       <artifactId>SingularityUI</artifactId>
-      <scope>runtime</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>io.dropwizard</groupId>
-      <artifactId>dropwizard-views-mustache</artifactId>
       <scope>runtime</scope>
     </dependency>
 
@@ -506,6 +512,7 @@
         <plugin>
           <artifactId>maven-surefire-plugin</artifactId>
           <configuration>
+            <argLine>--add-opens=java.base/java.lang=ALL-UNNAMED</argLine>
             <forkCount>2</forkCount>
             <reuseForks>true</reuseForks>
             <forkedProcessTimeoutInSeconds>600</forkedProcessTimeoutInSeconds>
@@ -516,6 +523,58 @@
         </plugin>
       </plugins>
     </pluginManagement>
+    <plugins>
+      <!-- The service jar is a Spring Boot executable jar under the name the repository has always
+           given it, so the parent project's shading of the module is switched off. -->
+      <!-- The module is compiled for the JDK Spring Boot needs, rather than for the one the parent
+           project compiles the modules that stay on the old framework for. -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <release>${project.build.targetJdk}</release>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>default</id>
+            <phase>none</phase>
+          </execution>
+        </executions>
+      </plugin>
+      <!-- The object graph is built by code generation at run time, which needs the platform's own
+           package opened to it on the JDK the service runs on. -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <configuration>
+          <archive>
+            <manifestEntries>
+              <Add-Opens>java.base/java.lang</Add-Opens>
+            </manifestEntries>
+          </archive>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+        <version>${spring-boot.version}</version>
+        <configuration>
+          <mainClass>com.hubspot.singularity.SingularityService</mainClass>
+          <classifier>shaded</classifier>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>repackage</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
   </build>
 
   <profiles>

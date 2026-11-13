@@ -26,7 +26,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import javax.ws.rs.WebApplicationException;
+import com.hubspot.singularity.web.SingularityWebException;
 import org.apache.mesos.v1.Protos.TaskState;
 import org.apache.mesos.v1.scheduler.Protos.Event;
 import org.junit.jupiter.api.Assertions;
@@ -77,8 +77,8 @@ public class SingularityTaskShellCommandTest extends SingularitySchedulerTestBas
           Optional.empty()
         )
       );
-    } catch (WebApplicationException exception) {
-      assertEquals(400, exception.getResponse().getStatus());
+    } catch (SingularityWebException exception) {
+      assertEquals(400, exception.getStatus());
     }
 
     // bad option
@@ -93,8 +93,8 @@ public class SingularityTaskShellCommandTest extends SingularitySchedulerTestBas
           Optional.empty()
         )
       );
-    } catch (WebApplicationException exception) {
-      assertEquals(400, exception.getResponse().getStatus());
+    } catch (SingularityWebException exception) {
+      assertEquals(400, exception.getStatus());
     }
 
     SingularityTaskShellCommandRequest firstShellRequest = taskResource.runShellCommand(

@@ -1,7 +1,6 @@
 package com.hubspot.singularity.resources;
 
 import static com.hubspot.singularity.WebExceptions.checkBadRequest;
-
 import com.google.inject.Inject;
 import com.hubspot.singularity.SingularityDeleteResult;
 import com.hubspot.singularity.SingularityPriorityFreezeParent;
@@ -11,24 +10,22 @@ import com.hubspot.singularity.auth.SingularityAuthorizer;
 import com.hubspot.singularity.config.ApiPaths;
 import com.hubspot.singularity.data.PriorityManager;
 import com.hubspot.singularity.data.SingularityValidator;
-import io.dropwizard.auth.Auth;
+import com.hubspot.singularity.web.Auth;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.tags.Tags;
 import java.util.Optional;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.MediaType;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-@Path(ApiPaths.PRIORITY_RESOURCE_PATH)
-@Produces({ MediaType.APPLICATION_JSON })
+@RestController
+@RequestMapping(ApiPaths.PRIORITY_RESOURCE_PATH)
 @Schema(title = "Manages whether or not to schedule tasks based on their priority levels")
 @Tags({ @Tag(name = "Task Priorities") })
 public class PriorityResource {
@@ -47,8 +44,7 @@ public class PriorityResource {
     this.priorityManager = priorityManager;
   }
 
-  @GET
-  @Path("/freeze")
+  @GetMapping("/freeze")
   @Operation(
     summary = "Get information about the active priority freeze",
     responses = {
@@ -66,8 +62,7 @@ public class PriorityResource {
     return priorityManager.getActivePriorityFreeze();
   }
 
-  @DELETE
-  @Path("/freeze")
+  @DeleteMapping("/freeze")
   @Operation(
     summary = "Stops the active priority freeze",
     responses = {
@@ -96,8 +91,7 @@ public class PriorityResource {
     priorityManager.clearPriorityKill();
   }
 
-  @POST
-  @Path("/freeze")
+  @PostMapping("/freeze")
   @Operation(
     summary = "Stop scheduling tasks below a certain priority level",
     responses = {
@@ -113,7 +107,8 @@ public class PriorityResource {
   )
   public SingularityPriorityFreezeParent createPriorityFreeze(
     @Parameter(hidden = true) @Auth SingularityUser user,
-    @RequestBody(
+    @org.springframework.web.bind.annotation.RequestBody(required = false)
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
       description = "the new priority freeze to create"
     ) SingularityPriorityFreeze priorityFreezeRequest
   ) {

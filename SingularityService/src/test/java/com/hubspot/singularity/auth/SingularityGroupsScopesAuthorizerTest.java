@@ -21,20 +21,18 @@ import com.hubspot.singularity.SingularityUserFacingAction;
 import com.hubspot.singularity.config.AuthConfiguration;
 import com.hubspot.singularity.config.UserAuthMode;
 import com.hubspot.singularity.event.SingularityEventListener;
-import com.squarespace.jersey2.guice.JerseyGuiceUtils;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import javax.ws.rs.WebApplicationException;
+import com.hubspot.singularity.web.SingularityWebException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public class SingularityGroupsScopesAuthorizerTest {
 
   static {
-    JerseyGuiceUtils.install((s, serviceLocator) -> null);
   }
 
   private static final SingularityUser ADMIN_USER = createSingularityUser(
@@ -179,7 +177,7 @@ public class SingularityGroupsScopesAuthorizerTest {
     assertFalse(authorizer.hasAdminAuthorization(GROUP_A_WRITE_ONLY));
     assertDoesNotThrow(() -> authorizer.checkAdminAuthorization(ADMIN_USER));
     assertThrows(
-      WebApplicationException.class,
+      SingularityWebException.class,
       () -> authorizer.checkAdminAuthorization(GROUP_A_WRITE_ONLY)
     );
   }
@@ -197,7 +195,7 @@ public class SingularityGroupsScopesAuthorizerTest {
     );
     assertEquals(1, elevatedAccessEvents.size());
     assertThrows(
-      WebApplicationException.class,
+      SingularityWebException.class,
       () ->
         authorizer.checkForAuthorization(
           GROUP_A_REQUEST,
@@ -224,7 +222,7 @@ public class SingularityGroupsScopesAuthorizerTest {
   @Test
   public void itDeniesDefaultGroupWhenOverriddenForWriteOrRead() {
     assertThrows(
-      WebApplicationException.class,
+      SingularityWebException.class,
       () ->
         authorizer.checkForAuthorization(
           GROUP_A_REQUEST_W_READ_ONLY_B,
@@ -463,7 +461,7 @@ public class SingularityGroupsScopesAuthorizerTest {
         )
     );
     assertThrows(
-      WebApplicationException.class,
+      SingularityWebException.class,
       () ->
         authorizer.checkForAuthorizedChanges(
           GROUP_A_REQUEST_W_READ_WRITE_B,
@@ -530,7 +528,7 @@ public class SingularityGroupsScopesAuthorizerTest {
     SingularityAuthorizationScope scope
   ) {
     assertThrows(
-      WebApplicationException.class,
+      SingularityWebException.class,
       () -> authorizer.checkForAuthorization(request, user, scope)
     );
     assertFalse(authorizer.isAuthorizedForRequest(request, user, scope));
@@ -543,7 +541,7 @@ public class SingularityGroupsScopesAuthorizerTest {
     SingularityUserFacingAction action
   ) {
     assertThrows(
-      WebApplicationException.class,
+      SingularityWebException.class,
       () -> authorizer.checkForAuthorization(request, user, scope, action)
     );
     assertFalse(authorizer.isAuthorizedForRequest(request, user, scope, action));

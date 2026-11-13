@@ -2,22 +2,17 @@ package com.hubspot.singularity.managed;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import io.dropwizard.lifecycle.Managed;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.eclipse.jetty.util.MultiException;
-import org.eclipse.jetty.util.component.AbstractLifeCycle;
-import org.eclipse.jetty.util.thread.ShutdownThread;
-
 /**
- * This class runs shutdown hooks before the default Jetty server shutdown hook / lifecycle management.
- * Actions will be run serially - any exceptions will be swallowed until after all have run.
+ * This class runs shutdown hooks before the rest of the service is shut down. Actions will be run serially -
+ * any exceptions will be swallowed until after all have run.
  *
- * This class does not need to be created after the Jetty server.
+ * This class does not need to be created after the server.
  */
 @Singleton
-public class SingularityPreJettyLifecycle extends AbstractLifeCycle implements Managed {
+public class SingularityPreJettyLifecycle implements Managed {
   private final List<Runnable> hooks;
   private final AtomicBoolean hasRun;
 
@@ -28,27 +23,31 @@ public class SingularityPreJettyLifecycle extends AbstractLifeCycle implements M
   }
 
   @Override
-  protected void doStart() throws Exception {
-    // Registering at index 0 ensures this hook is run first during shutdown.
-    ShutdownThread.register(0, this);
-  }
+  public void start() {}
 
+  /** Runs every hook, and only then answers for the first one that could not be run. */
   @Override
-  protected synchronized void doStop() throws Exception {
+  public synchronized void stop() throws Exception {
     if (hasRun.get()) {
       return;
     }
 
-    MultiException exceptions = new MultiException();
+    Exception failure = null;
     for (Runnable hook : hooks) {
       try {
         hook.run();
       } catch (Exception e) {
-        exceptions.add(e);
+        if (failure == null) {
+          failure = e;
+        } else {
+          failure.addSuppressed(e);
+        }
       }
     }
     hasRun.set(true);
-    exceptions.ifExceptionThrow();
+    if (failure != null) {
+      throw failure;
+    }
   }
 
   public boolean registerShutdownHook(Runnable runnable) {

@@ -11,7 +11,7 @@ import com.hubspot.singularity.SingularityTaskId;
 import com.hubspot.singularity.data.history.SingularityDeployHistoryPersister;
 import com.hubspot.singularity.data.history.SingularityRequestHistoryPersister;
 import com.hubspot.singularity.data.history.SingularityTaskHistoryPersister;
-import io.dropwizard.db.DataSourceFactory;
+import com.hubspot.singularity.config.server.DataSourceConfiguration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -391,7 +391,7 @@ public class HistoryPersisterTest extends SingularitySchedulerTestBase {
         Optional.<String>empty()
       );
 
-      configuration.setDatabaseConfiguration(new DataSourceFactory());
+      configuration.setDatabaseConfiguration(new DataSourceConfiguration());
 
       configuration.setDeleteStaleRequestsFromZkWhenNoDatabaseAfterHours(1);
 

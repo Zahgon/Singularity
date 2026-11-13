@@ -1,7 +1,6 @@
 package com.hubspot.singularity.resources;
 
 import static com.hubspot.singularity.WebExceptions.checkForbidden;
-
 import com.google.inject.Inject;
 import com.hubspot.singularity.SingularityAbort;
 import com.hubspot.singularity.SingularityAbort.AbortReason;
@@ -15,6 +14,9 @@ import com.hubspot.singularity.data.history.SingularityRequestHistoryPersister;
 import com.hubspot.singularity.data.history.SingularityTaskHistoryPersister;
 import com.hubspot.singularity.mesos.SingularityMesosScheduler;
 import com.hubspot.singularity.scheduler.SingularityTaskReconciliation;
+import com.hubspot.singularity.web.DefaultValue;
+import com.hubspot.singularity.web.PathParam;
+import com.hubspot.singularity.web.QueryParam;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -23,16 +25,15 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.tags.Tags;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.QueryParam;
 import org.apache.mesos.v1.Protos.TaskID;
 import org.apache.mesos.v1.Protos.TaskState;
 import org.apache.mesos.v1.Protos.TaskStatus;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-@Path(ApiPaths.TEST_RESOURCE_PATH)
+@RestController
+@RequestMapping(ApiPaths.TEST_RESOURCE_PATH)
 @Schema(title = "Misc testing endpoints")
 @Tags({ @Tag(name = "Test") })
 public class TestResource {
@@ -72,8 +73,7 @@ public class TestResource {
     this.requestHistoryPersister = requestHistoryPersister;
   }
 
-  @POST
-  @Path("/scheduler/statusUpdate/{taskId}/{taskState}")
+  @PostMapping("/scheduler/statusUpdate/{taskId}/{taskState}")
   @Operation(
     summary = "Force an update for a specific task",
     responses = {
@@ -103,8 +103,7 @@ public class TestResource {
       .join();
   }
 
-  @POST
-  @Path("/leader")
+  @PostMapping("/leader")
   @Operation(
     summary = "Make this instance of Singularity believe it's elected leader",
     responses = {
@@ -123,8 +122,7 @@ public class TestResource {
     managed.isLeader();
   }
 
-  @POST
-  @Path("/notleader")
+  @PostMapping("/notleader")
   @Operation(
     summary = "Make this instanceo of Singularity believe it's lost leadership",
     responses = {
@@ -143,8 +141,7 @@ public class TestResource {
     managed.notLeader();
   }
 
-  @POST
-  @Path("/stop")
+  @PostMapping("/stop")
   @Operation(
     summary = "Stop the Mesos scheduler subscriber",
     responses = {
@@ -163,8 +160,7 @@ public class TestResource {
     managed.stop();
   }
 
-  @POST
-  @Path("/abort")
+  @PostMapping("/abort")
   @Operation(
     summary = "Abort the Mesos scheduler",
     responses = {
@@ -186,8 +182,7 @@ public class TestResource {
     );
   }
 
-  @POST
-  @Path("/start")
+  @PostMapping("/start")
   @Operation(
     summary = "Start the Mesos scheduler driver",
     responses = {
@@ -206,8 +201,7 @@ public class TestResource {
     managed.start();
   }
 
-  @POST
-  @Path("/exception")
+  @PostMapping("/exception")
   @Operation(
     summary = "Trigger an exception",
     responses = {
@@ -225,8 +219,7 @@ public class TestResource {
     throw new RuntimeException(message);
   }
 
-  @POST
-  @Path("/reconcile")
+  @PostMapping("/reconcile")
   @Operation(
     summary = "Start task reconciliation",
     responses = {
@@ -244,8 +237,7 @@ public class TestResource {
     taskReconciliation.startReconciliation();
   }
 
-  @POST
-  @Path("/purge-history")
+  @PostMapping("/purge-history")
   @Operation(
     summary = "Run a history purge",
     responses = {
@@ -263,8 +255,7 @@ public class TestResource {
     historyPurger.runActionOnPoll();
   }
 
-  @POST
-  @Path("/purge-history/request")
+  @PostMapping("/purge-history/request")
   @Operation(
     summary = "Run a request history purge",
     responses = {
@@ -282,8 +273,7 @@ public class TestResource {
     historyManager.purgeRequestHistory();
   }
 
-  @POST
-  @Path("/purge-history/deploy")
+  @PostMapping("/purge-history/deploy")
   @Operation(
     summary = "Run a request history purge",
     responses = {
@@ -301,8 +291,7 @@ public class TestResource {
     historyManager.purgeDeployHistory();
   }
 
-  @POST
-  @Path("/reconnect-mesos")
+  @PostMapping("/reconnect-mesos")
   @Operation(
     summary = "Trigger a reconnect to the mesos master",
     responses = {
@@ -320,8 +309,7 @@ public class TestResource {
     scheduler.reconnectMesos();
   }
 
-  @POST
-  @Path("/persist-task-history")
+  @PostMapping("/persist-task-history")
   @Operation(
     summary = "Trigger a task history persister run",
     responses = {
@@ -339,8 +327,7 @@ public class TestResource {
     CompletableFuture.runAsync(taskHistoryPersister::runActionOnPoll);
   }
 
-  @POST
-  @Path("/persist-deploy-history")
+  @PostMapping("/persist-deploy-history")
   @Operation(
     summary = "Trigger a deploy history persister run",
     responses = {
@@ -358,8 +345,7 @@ public class TestResource {
     CompletableFuture.runAsync(deployHistoryPersister::runActionOnPoll);
   }
 
-  @POST
-  @Path("/persist-request-history")
+  @PostMapping("/persist-request-history")
   @Operation(
     summary = "Trigger a request history persister run",
     responses = {

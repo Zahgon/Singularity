@@ -1,173 +1,138 @@
 package com.hubspot.singularity;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.fasterxml.jackson.datatype.guava.GuavaModule;
-import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
 import com.google.inject.Module;
 import com.google.inject.Scopes;
 import com.google.inject.Stage;
-import com.hubspot.dropwizard.guicier.GuiceBundle;
-import com.hubspot.jackson.datatype.protobuf.ProtobufModule;
 import com.hubspot.singularity.auth.SingularityAuthModule;
-import com.hubspot.singularity.bundles.CorsBundle;
+import com.hubspot.singularity.cli.CheckCommand;
+import com.hubspot.singularity.cli.Cli;
+import com.hubspot.singularity.cli.Command;
+import com.hubspot.singularity.cli.DbCommand;
+import com.hubspot.singularity.cli.JarLocation;
+import com.hubspot.singularity.cli.ServerCommand;
 import com.hubspot.singularity.config.ApiPaths;
+import com.hubspot.singularity.config.ConfigurationException;
+import com.hubspot.singularity.config.ConfigurationFactory;
+import com.hubspot.singularity.config.ConfigurationSourceProvider;
+import com.hubspot.singularity.config.FileConfigurationSourceProvider;
 import com.hubspot.singularity.config.MergingSourceProvider;
 import com.hubspot.singularity.config.SingularityConfiguration;
-import com.hubspot.singularity.guice.DropwizardObjectMapperProvider;
-import io.dropwizard.Application;
-import io.dropwizard.Bundle;
-import io.dropwizard.ConfiguredBundle;
-import io.dropwizard.assets.AssetsBundle;
-import io.dropwizard.db.DataSourceFactory;
-import io.dropwizard.migrations.MigrationsBundle;
-import io.dropwizard.setup.Bootstrap;
-import io.dropwizard.setup.Environment;
-import io.dropwizard.views.ViewBundle;
-import io.swagger.v3.oas.annotations.OpenAPIDefinition;
-import io.swagger.v3.oas.annotations.info.Info;
-import io.swagger.v3.oas.annotations.tags.Tag;
+import com.hubspot.singularity.guice.ConfiguredModule;
+import com.hubspot.singularity.guice.SingularityObjectMapperProvider;
+import com.hubspot.singularity.guice.SingularityPlatformModule;
+import com.hubspot.singularity.jackson.SingularityObjectMappers;
+import com.hubspot.singularity.logging.LoggingConfigurator;
+import com.hubspot.singularity.spring.SingularityAdminApplication;
+import com.hubspot.singularity.spring.SingularityPlatform;
+import com.hubspot.singularity.spring.SingularityWebApplication;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import org.springframework.boot.Banner;
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.context.ConfigurableApplicationContext;
 
-@OpenAPIDefinition(
-  info = @Info(title = "Singularity"),
-  tags = {
-    @Tag(name = "Requests"),
-    @Tag(name = "Deploys"),
-    @Tag(name = "Tasks"),
-    @Tag(name = "Task Tracking"),
-    @Tag(name = "History"),
-    @Tag(name = "State"),
-    @Tag(name = "Agents"),
-    @Tag(name = "Racks"),
-    @Tag(name = "Task Priorities"),
-    @Tag(name = "Disasters"),
-    @Tag(name = "Request Groups"),
-    @Tag(name = "Sandbox"),
-    @Tag(name = "Auth"),
-    @Tag(name = "Users"),
-    @Tag(name = "Inactive Machines"),
-    @Tag(name = "Metrics"),
-    @Tag(name = "S3 Logs"),
-    @Tag(name = "Resource Usage"),
-    @Tag(name = "Webhooks"),
-    @Tag(name = "Test")
-  }
-)
-public class SingularityService<T extends SingularityConfiguration>
-  extends Application<T> {
+/**
+ * Singularity: the service, its command line and the extension points something that embeds it hooks into.
+ *
+ * The service is a Spring Boot application. The command line reads a YAML configuration file, the
+ * configuration decides the connectors and the context paths, and the object graph of the service itself is
+ * built by Guice and handed to the application context, so the resources, managers, datastores and
+ * schedulers keep the bindings they have always had.
+ */
+public class SingularityService<T extends SingularityConfiguration> {
   private static final String SINGULARITY_DEFAULT_CONFIGURATION_PROPERTY =
     "singularityDefaultConfiguration";
 
   public static final String API_BASE_PATH = ApiPaths.API_BASE_PATH;
 
-  private GuiceBundle<SingularityConfiguration> guiceBundle;
+  private final ObjectMapper configurationObjectMapper = SingularityObjectMappers.newYamlObjectMapper();
+  private ConfigurationSourceProvider configurationSourceProvider = new FileConfigurationSourceProvider();
 
-  @Override
-  public void initialize(final Bootstrap<T> bootstrap) {
-    if (
-      !Strings.isNullOrEmpty(
-        System.getProperty(SINGULARITY_DEFAULT_CONFIGURATION_PROPERTY)
-      )
-    ) {
-      bootstrap.setConfigurationSourceProvider(
+  /**
+   * Called before anything is read or started. A file of defaults named by the
+   * {@code singularityDefaultConfiguration} property is merged under every configuration file that is read.
+   */
+  public void initialize() {
+    final String defaults = System.getProperty(
+      SINGULARITY_DEFAULT_CONFIGURATION_PROPERTY
+    );
+    if (!Strings.isNullOrEmpty(defaults)) {
+      configurationSourceProvider =
         new MergingSourceProvider(
-          bootstrap.getConfigurationSourceProvider(),
-          System.getProperty(SINGULARITY_DEFAULT_CONFIGURATION_PROPERTY),
-          bootstrap.getObjectMapper(),
+          configurationSourceProvider,
+          defaults,
+          configurationObjectMapper,
           new YAMLFactory()
-        )
-      );
+        );
     }
-
-    final Iterable<? extends Module> additionalModules = checkNotNull(
-      getGuiceModules(bootstrap),
-      "getGuiceModules() returned null"
-    );
-    final Iterable<? extends Bundle> additionalBundles = checkNotNull(
-      getDropwizardBundles(bootstrap),
-      "getDropwizardBundles() returned null"
-    );
-    final Iterable<? extends ConfiguredBundle<T>> additionalConfiguredBundles = checkNotNull(
-      getDropwizardConfiguredBundles(bootstrap),
-      "getDropwizardConfiguredBundles() returned null"
-    );
-
-    GuiceBundle.Builder<SingularityConfiguration> guiceBundleBuilder = GuiceBundle
-      .defaultBuilder(SingularityConfiguration.class)
-      .modules(getServiceModule(), getObjectMapperModule(), getAuthModule())
-      .modules(additionalModules)
-      .enableGuiceEnforcer(false)
-      .stage(getGuiceStage());
-    modifyGuiceBundle(guiceBundleBuilder);
-    guiceBundle = guiceBundleBuilder.build();
-    bootstrap.addBundle(guiceBundle);
-
-    bootstrap.addBundle(new CorsBundle());
-    bootstrap.addBundle(new ViewBundle<>());
-    bootstrap.addBundle(new AssetsBundle("/assets/static/", "/static/"));
-    bootstrap.addBundle(
-      new MigrationsBundle<SingularityConfiguration>() {
-
-        @Override
-        public DataSourceFactory getDataSourceFactory(
-          final SingularityConfiguration configuration
-        ) {
-          return configuration.getDatabaseConfiguration().get();
-        }
-      }
-    );
-
-    for (Bundle bundle : additionalBundles) {
-      bootstrap.addBundle(bundle);
-    }
-
-    for (ConfiguredBundle<T> configuredBundle : additionalConfiguredBundles) {
-      bootstrap.addBundle(configuredBundle);
-    }
-
-    bootstrap.getObjectMapper().registerModule(new ProtobufModule());
-    bootstrap.getObjectMapper().registerModule(new GuavaModule());
-    bootstrap.getObjectMapper().registerModule(new Jdk8Module());
-    bootstrap.getObjectMapper().setSerializationInclusion(Include.NON_ABSENT);
-    bootstrap
-      .getObjectMapper()
-      .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
   }
 
-  public Stage getGuiceStage() {
-    return Stage.PRODUCTION;
+  @SuppressWarnings("unchecked")
+  public Class<T> getConfigurationClass() {
+    return (Class<T>) SingularityConfiguration.class;
   }
 
+  public ConfigurationSourceProvider getConfigurationSourceProvider() {
+    return configurationSourceProvider;
+  }
+
+  public void setConfigurationSourceProvider(ConfigurationSourceProvider provider) {
+    this.configurationSourceProvider = provider;
+  }
+
+  /** The configuration the file at this path holds, or the default configuration when there is no path. */
+  public T parseConfiguration(String path) throws IOException, ConfigurationException {
+    final ConfigurationFactory<T> factory = new ConfigurationFactory<>(
+      getConfigurationClass(),
+      configurationObjectMapper
+    );
+    return path == null
+      ? factory.build()
+      : factory.build(configurationSourceProvider, path);
+  }
+
+  public void configureLogging(SingularityConfiguration configuration) {
+    LoggingConfigurator.configure(configuration.getLoggingConfiguration());
+  }
+
+  /** The commands the command line reads, in the order its usage lists them. */
+  public Iterable<Command> getCommands() {
+    final List<Command> commands = new ArrayList<>();
+    commands.add(new ServerCommand());
+    commands.add(new CheckCommand());
+    commands.add(new DbCommand());
+    for (Command command : getAdditionalCommands()) {
+      commands.add(command);
+    }
+    return commands;
+  }
+
+  /**
+   * Commands in addition to the ones the service brings. This is an extension point when embedding
+   * Singularity into a custom service.
+   */
+  public Iterable<? extends Command> getAdditionalCommands() {
+    return ImmutableList.of();
+  }
+
+  /** The module that binds the service itself. */
   public Module getServiceModule() {
     return new SingularityServiceModule();
   }
 
-  @Override
-  public void run(final T configuration, final Environment environment)
-    throws Exception {}
-
-  /**
-   * Guice modules used in addition to the modules required by Singularity. This is an extension point when embedding
-   * Singularity into a custom service.
-   */
-  public Iterable<? extends Module> getGuiceModules(Bootstrap<T> bootstrap) {
-    return ImmutableList.of();
-  }
-
-  /**
-   * Ability to override the default object mapper used when embedding Singularity
-   */
+  /** The module that decides which object mapper the API reads and writes entities with. */
   public Module getObjectMapperModule() {
     return binder ->
       binder
         .bind(ObjectMapper.class)
-        .toProvider(DropwizardObjectMapperProvider.class)
+        .toProvider(SingularityObjectMapperProvider.class)
         .in(Scopes.SINGLETON);
   }
 
@@ -176,25 +141,96 @@ public class SingularityService<T extends SingularityConfiguration>
   }
 
   /**
-   * Dropwizard bundles used in addition to the bundles required by Singularity. This is an extension point when embedding
-   * Singularity into a custom service.
+   * Guice modules used in addition to the modules required by Singularity. This is an extension point when
+   * embedding Singularity into a custom service.
    */
-  public Iterable<? extends Bundle> getDropwizardBundles(Bootstrap<T> bootstrap) {
+  public Iterable<? extends Module> getGuiceModules() {
     return ImmutableList.of();
   }
 
-  public Iterable<? extends ConfiguredBundle<T>> getDropwizardConfiguredBundles(
-    Bootstrap<T> bootstrap
-  ) {
-    return ImmutableList.of();
+  public Stage getGuiceStage() {
+    return Stage.PRODUCTION;
   }
 
   /**
-   * Allow for modification of GuiceBundle (e.g. injector factory settings)
+   * A chance to change the application before it is started. This is an extension point when embedding
+   * Singularity into a custom service.
    */
-  public void modifyGuiceBundle(
-    GuiceBundle.Builder<SingularityConfiguration> bundleBuilder
-  ) {}
+  public void modifyApplication(SpringApplicationBuilder builder) {}
+
+  /**
+   * What the connector is told before it is built: an escaped separator in a target is a character of the
+   * value it stands in, and a backslash is a character like any other, which is how the service has always
+   * read a target.
+   */
+  private static void allowTargetCharacters() {
+    System.setProperty("org.apache.tomcat.util.buf.UDecoder.ALLOW_ENCODED_SLASH", "true");
+    System.setProperty("org.apache.catalina.connector.CoyoteAdapter.ALLOW_BACKSLASH", "true");
+  }
+
+  /** Builds the object graph of the service and starts the connectors its configuration names. */
+  public ConfigurableApplicationContext startServer(SingularityConfiguration configuration)
+    throws Exception {
+    allowTargetCharacters();
+    final SingularityPlatform platform = new SingularityPlatform(configuration);
+    final List<Module> modules = new ArrayList<>();
+    modules.add(new SingularityPlatformModule(platform));
+    modules.add(getServiceModule());
+    modules.add(getObjectMapperModule());
+    modules.add(getAuthModule());
+    for (Module module : getGuiceModules()) {
+      modules.add(module);
+    }
+    // A module that is written against the configuration is given it before it binds anything.
+    for (Module module : modules) {
+      if (module instanceof ConfiguredModule) {
+        ((ConfiguredModule) module).setConfiguration(configuration);
+      }
+    }
+    final Injector injector = Guice.createInjector(getGuiceStage(), modules);
+    platform.setInjector(injector);
+
+    final SpringApplicationBuilder builder = new SpringApplicationBuilder(
+      SingularityWebApplication.class
+    )
+      .bannerMode(Banner.Mode.OFF)
+      .logStartupInfo(false)
+      .registerShutdownHook(true)
+      .properties(platform.applicationProperties())
+      .initializers(platform::registerWith);
+    modifyApplication(builder);
+    final ConfigurableApplicationContext context = builder.run();
+
+    if (platform.hasAdminConnector()) {
+      new SpringApplicationBuilder(SingularityAdminApplication.class)
+        .bannerMode(Banner.Mode.OFF)
+        .logStartupInfo(false)
+        .registerShutdownHook(false)
+        .properties(platform.adminProperties())
+        .initializers(platform::registerWith)
+        .run();
+    }
+    return context;
+  }
+
+  /** Reads the arguments and does what they name, ending badly only when a command could not be run. */
+  public void run(String... arguments) throws Exception {
+    initialize();
+    final Cli cli = new Cli(
+      new JarLocation(getClass()),
+      this,
+      getCommands(),
+      System.out,
+      System.err
+    );
+    if (!cli.run(arguments)) {
+      onFatalError();
+    }
+  }
+
+  protected void onFatalError() {
+    System.exit(1);
+  }
 
   public static void main(final String[] args) throws Exception {
     try {

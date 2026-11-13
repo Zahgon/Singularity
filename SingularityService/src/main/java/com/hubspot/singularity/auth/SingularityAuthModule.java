@@ -4,7 +4,7 @@ import com.google.inject.Binder;
 import com.google.inject.Scopes;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.name.Names;
-import com.hubspot.dropwizard.guicier.DropwizardAwareModule;
+import com.hubspot.singularity.guice.ConfiguredModule;
 import com.hubspot.singularity.SingularityAsyncHttpClient;
 import com.hubspot.singularity.auth.authenticator.RawUserResponseParser;
 import com.hubspot.singularity.auth.authenticator.SingularityAuthenticator;
@@ -12,8 +12,6 @@ import com.hubspot.singularity.auth.authenticator.SingularityMultiMethodAuthenti
 import com.hubspot.singularity.auth.authenticator.WebhookResponseParser;
 import com.hubspot.singularity.auth.authenticator.WrappedUserResponseParser;
 import com.hubspot.singularity.auth.datastore.SingularityAuthDatastore;
-import com.hubspot.singularity.auth.dw.SingularityAuthFeature;
-import com.hubspot.singularity.auth.dw.SingularityAuthenticatorClass;
 import com.hubspot.singularity.config.AuthConfiguration;
 import com.hubspot.singularity.config.SingularityConfiguration;
 import com.ning.http.client.AsyncHttpClient;
@@ -22,8 +20,7 @@ import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
 
-public class SingularityAuthModule
-  extends DropwizardAwareModule<SingularityConfiguration> {
+public class SingularityAuthModule extends ConfiguredModule {
   public static final String WEBHOOK_AUTH_HTTP_CLIENT =
     "singularity.webhook.auth.http.client";
   private Optional<Class<? extends SingularityAuthorizer>> authorizerClass = Optional.empty();
@@ -91,7 +88,6 @@ public class SingularityAuthModule
         break;
     }
 
-    binder.bind(SingularityAuthFeature.class);
     binder.bind(SingularityMultiMethodAuthenticator.class);
     binder
       .bind(SingularityAuthDatastore.class)

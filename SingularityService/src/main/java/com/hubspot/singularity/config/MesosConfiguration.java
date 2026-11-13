@@ -3,7 +3,7 @@ package com.hubspot.singularity.config;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.hubspot.singularity.MachineLoadMetric;
 import java.util.Optional;
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class MesosConfiguration {

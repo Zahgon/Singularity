@@ -3,7 +3,6 @@ package com.hubspot.singularity.resources;
 import static com.hubspot.singularity.WebExceptions.checkBadRequest;
 import static com.hubspot.singularity.WebExceptions.checkNotFound;
 import static com.hubspot.singularity.WebExceptions.timeout;
-
 import com.amazonaws.HttpMethod;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.GeneratePresignedUrlRequest;
@@ -55,14 +54,16 @@ import com.hubspot.singularity.data.history.RequestHistoryHelper;
 import com.hubspot.singularity.helpers.S3ObjectSummaryHolder;
 import com.hubspot.singularity.helpers.SingularityS3Service;
 import com.hubspot.singularity.helpers.SingularityS3Services;
+import com.hubspot.singularity.web.Auth;
+import com.hubspot.singularity.web.DefaultValue;
+import com.hubspot.singularity.web.PathParam;
+import com.hubspot.singularity.web.QueryParam;
 import com.ning.http.client.AsyncHttpClient;
-import io.dropwizard.auth.Auth;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.tags.Tags;
@@ -85,21 +86,16 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.MediaType;
 import org.apache.curator.framework.recipes.leader.LeaderLatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-@Path(ApiPaths.S3_LOG_RESOURCE_PATH)
-@Produces({ MediaType.APPLICATION_JSON })
+@RestController
+@RequestMapping(ApiPaths.S3_LOG_RESOURCE_PATH)
 @Schema(title = "Manage Singularity task logs stored in S3")
 @Tags({ @Tag(name = "S3 Logs") })
 public class S3LogResource extends AbstractHistoryResource {
@@ -958,8 +954,7 @@ public class S3LogResource extends AbstractHistoryResource {
     checkNotFound(configuration.isPresent(), "S3 configuration was absent");
   }
 
-  @GET
-  @Path("/task/{taskId}")
+  @GetMapping("/task/{taskId}")
   @Operation(
     summary = "Retrieve the list of logs stored in S3 for a specific task",
     responses = {
@@ -1029,8 +1024,7 @@ public class S3LogResource extends AbstractHistoryResource {
     }
   }
 
-  @GET
-  @Path("/request/{requestId}")
+  @GetMapping("/request/{requestId}")
   @Operation(
     summary = "Retrieve the list of logs stored in S3 for a specific request",
     responses = {
@@ -1103,8 +1097,7 @@ public class S3LogResource extends AbstractHistoryResource {
     }
   }
 
-  @GET
-  @Path("/request/{requestId}/deploy/{deployId}")
+  @GetMapping("/request/{requestId}/deploy/{deployId}")
   @Operation(
     summary = "Retrieve the list of logs stored in S3 for a specific deploy",
     responses = {
@@ -1184,9 +1177,7 @@ public class S3LogResource extends AbstractHistoryResource {
     }
   }
 
-  @POST
-  @Path("/search")
-  @Consumes(MediaType.APPLICATION_JSON)
+  @PostMapping(path = "/search")
   @Operation(
     summary = "Retrieve a paginated list of logs stored in S3",
     responses = {
@@ -1212,7 +1203,8 @@ public class S3LogResource extends AbstractHistoryResource {
   )
   public SingularityS3SearchResult getPaginatedS3Logs(
     @Parameter(hidden = true) @Auth SingularityUser user,
-    @RequestBody(required = true) SingularityS3SearchRequest search
+    @org.springframework.web.bind.annotation.RequestBody(required = false)
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true) SingularityS3SearchRequest search
   )
     throws Exception {
     checkS3();

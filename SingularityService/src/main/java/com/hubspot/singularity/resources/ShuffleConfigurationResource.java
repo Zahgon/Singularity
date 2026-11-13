@@ -7,27 +7,26 @@ import com.hubspot.singularity.SingularityUser;
 import com.hubspot.singularity.auth.SingularityAuthorizer;
 import com.hubspot.singularity.config.ApiPaths;
 import com.hubspot.singularity.data.ShuffleConfigurationManager;
+import com.hubspot.singularity.web.Auth;
+import com.hubspot.singularity.web.PathParam;
 import com.ning.http.client.AsyncHttpClient;
-import io.dropwizard.auth.Auth;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.tags.Tags;
 import java.util.List;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.MediaType;
 import org.apache.curator.framework.recipes.leader.LeaderLatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-@Path(ApiPaths.SHUFFLE_RESOURCE_PATH)
-@Produces({ MediaType.APPLICATION_JSON })
+@RestController
+@RequestMapping(ApiPaths.SHUFFLE_RESOURCE_PATH)
 @Schema(title = "Manages shuffle configuration of Singularity.")
 @Tags({ @Tag(name = "Shuffle") })
 public class ShuffleConfigurationResource extends AbstractLeaderAwareResource {
@@ -51,8 +50,7 @@ public class ShuffleConfigurationResource extends AbstractLeaderAwareResource {
     this.authorizationHelper = authorizationHelper;
   }
 
-  @GET
-  @Path("/blacklist")
+  @GetMapping("/blacklist")
   @Operation(summary = "Retrieve the set of request IDs that should not be shuffled.")
   public List<String> getShuffleBlacklist(
     @Parameter(hidden = true) @Auth SingularityUser user
@@ -61,8 +59,7 @@ public class ShuffleConfigurationResource extends AbstractLeaderAwareResource {
     return shuffleCfgManager.getShuffleBlocklist();
   }
 
-  @GET
-  @Path("/blacklist/{requestId}")
+  @GetMapping("/blacklist/{requestId}")
   @Operation(summary = "Check if a request ID is on the shuffle blacklist.")
   public boolean isOnShuffleBlacklist(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -79,8 +76,7 @@ public class ShuffleConfigurationResource extends AbstractLeaderAwareResource {
     return shuffleCfgManager.isOnShuffleBlocklist(requestId);
   }
 
-  @POST
-  @Path("/blacklist/{requestId}")
+  @PostMapping("/blacklist/{requestId}")
   @Operation(
     summary = "Add a request ID to the shuffle blacklist. No effect if already present."
   )
@@ -99,8 +95,7 @@ public class ShuffleConfigurationResource extends AbstractLeaderAwareResource {
     shuffleCfgManager.addToShuffleBlocklist(requestId);
   }
 
-  @DELETE
-  @Path("/blacklist/{requestId}")
+  @DeleteMapping("/blacklist/{requestId}")
   @Operation(
     summary = "Remove a request ID from the shuffle blacklist. No effect if not present."
   )

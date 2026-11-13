@@ -45,7 +45,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import javax.inject.Singleton;
-import javax.ws.rs.WebApplicationException;
+import com.hubspot.singularity.web.SingularityWebException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -246,7 +246,7 @@ public class SingularityExpiringUserActionPoller extends SingularityLeaderOnlyPo
           Optional.empty()
         );
         // TODO - email
-      } catch (WebApplicationException wae) {
+      } catch (SingularityWebException wae) {
         LOG.error(
           "While trying to apply {} for {}",
           expiringObject,
@@ -470,7 +470,7 @@ public class SingularityExpiringUserActionPoller extends SingularityLeaderOnlyPo
           oldRequest.getInstances(),
           expiringObject.getUser().orElse("unknown")
         );
-      } catch (WebApplicationException wae) {
+      } catch (SingularityWebException wae) {
         LOG.error(
           "While trying to apply {} for {}",
           expiringObject,
@@ -516,7 +516,7 @@ public class SingularityExpiringUserActionPoller extends SingularityLeaderOnlyPo
           Optional.of(message),
           Optional.<SingularityBounceRequest>empty()
         );
-      } catch (WebApplicationException wae) {
+      } catch (SingularityWebException wae) {
         LOG.error(
           "While trying to apply {} for {}",
           expiringObject,

@@ -7,31 +7,28 @@ import com.hubspot.singularity.SingularityRequestGroup;
 import com.hubspot.singularity.config.ApiPaths;
 import com.hubspot.singularity.data.RequestGroupManager;
 import com.hubspot.singularity.data.SingularityValidator;
+import com.hubspot.singularity.web.PathParam;
+import com.hubspot.singularity.web.QueryParam;
 import com.ning.http.client.AsyncHttpClient;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.tags.Tags;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Optional;
-import javax.servlet.http.HttpServletRequest;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
 import org.apache.curator.framework.recipes.leader.LeaderLatch;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-@Path(ApiPaths.REQUEST_GROUP_RESOURCE_PATH)
-@Produces({ MediaType.APPLICATION_JSON })
+@RestController
+@RequestMapping(ApiPaths.REQUEST_GROUP_RESOURCE_PATH)
 @Schema(
   title = "Manages Singularity Request Groups, which are collections of one or more Singularity Requests"
 )
@@ -53,7 +50,7 @@ public class RequestGroupResource extends AbstractLeaderAwareResource {
     this.validator = validator;
   }
 
-  @GET
+  @GetMapping
   @Operation(summary = "Get a list of Singularity request groups")
   public List<SingularityRequestGroup> getRequestGroupIds(
     @Parameter(
@@ -63,8 +60,7 @@ public class RequestGroupResource extends AbstractLeaderAwareResource {
     return requestGroupManager.getRequestGroups(useWebCache != null && useWebCache);
   }
 
-  @GET
-  @Path("/group/{requestGroupId}")
+  @GetMapping("/group/{requestGroupId}")
   @Operation(
     summary = "Get a specific Singularity request group by ID",
     responses = {
@@ -82,34 +78,34 @@ public class RequestGroupResource extends AbstractLeaderAwareResource {
     return requestGroupManager.getRequestGroup(requestGroupId);
   }
 
-  @DELETE
-  @Path("/group/{requestGroupId}")
+  @DeleteMapping("/group/{requestGroupId}")
   @Operation(summary = "Delete a specific Singularity request group by ID")
-  public Response deleteRequestGroup(
+  public ResponseEntity<Object> deleteRequestGroup(
     @Parameter(required = true, description = "The id of the request group") @PathParam(
       "requestGroupId"
     ) String requestGroupId,
-    @Context HttpServletRequest requestContext
+    HttpServletRequest requestContext
   ) {
     return maybeProxyToLeader(
       requestContext,
-      Response.class,
+      ResponseEntity.class,
       null,
       () -> {
         requestGroupManager.deleteRequestGroup(requestGroupId);
-        return Response.ok().build();
+        return ResponseEntity.ok().build();
       }
     );
   }
 
-  @POST
+  @PostMapping
   @Operation(summary = "Create a Singularity request group")
   public SingularityRequestGroup saveRequestGroup(
-    @RequestBody(
+    @org.springframework.web.bind.annotation.RequestBody(required = false)
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
       required = true,
       description = "The new request group to create"
     ) SingularityRequestGroup requestGroup,
-    @Context HttpServletRequest requestContext
+    HttpServletRequest requestContext
   ) {
     return maybeProxyToLeader(
       requestContext,

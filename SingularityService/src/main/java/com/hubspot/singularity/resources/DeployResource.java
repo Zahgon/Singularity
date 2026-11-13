@@ -3,11 +3,9 @@ package com.hubspot.singularity.resources;
 import static com.hubspot.singularity.WebExceptions.checkBadRequest;
 import static com.hubspot.singularity.WebExceptions.checkConflict;
 import static com.hubspot.singularity.WebExceptions.checkNotNullBadRequest;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Inject;
-import com.hubspot.jackson.jaxrs.PropertyFiltering;
 import com.hubspot.singularity.DeployState;
 import com.hubspot.singularity.RequestState;
 import com.hubspot.singularity.Singularity;
@@ -37,33 +35,30 @@ import com.hubspot.singularity.data.SingularityValidator;
 import com.hubspot.singularity.data.TaskManager;
 import com.hubspot.singularity.helpers.RequestHelper;
 import com.hubspot.singularity.mesos.SingularitySchedulerLock;
+import com.hubspot.singularity.web.Auth;
+import com.hubspot.singularity.web.PathParam;
+import com.hubspot.singularity.web.PropertyFiltering;
+import com.hubspot.singularity.web.QueryParam;
 import com.ning.http.client.AsyncHttpClient;
-import io.dropwizard.auth.Auth;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.tags.Tags;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
-import javax.servlet.http.HttpServletRequest;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
 import org.apache.curator.framework.recipes.leader.LeaderLatch;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-@Path(ApiPaths.DEPLOY_RESOURCE_PATH)
-@Produces({ MediaType.APPLICATION_JSON })
+@RestController
+@RequestMapping(ApiPaths.DEPLOY_RESOURCE_PATH)
 @Schema(title = "Manages Singularity Deploys for existing requests")
 @Tags({ @Tag(name = "Deploys") })
 public class DeployResource extends AbstractRequestResource {
@@ -100,9 +95,8 @@ public class DeployResource extends AbstractRequestResource {
     this.schedulerLock = schedulerLock;
   }
 
-  @GET
+  @GetMapping("/pending")
   @PropertyFiltering
-  @Path("/pending")
   @Operation(description = "Retrieve the list of current pending deploys")
   public List<SingularityPendingDeploy> getPendingDeploys(
     @Parameter(hidden = true) @Auth SingularityUser user
@@ -115,8 +109,7 @@ public class DeployResource extends AbstractRequestResource {
     );
   }
 
-  @POST
-  @Consumes({ MediaType.APPLICATION_JSON })
+  @PostMapping
   @Operation(
     summary = "Start a new deployment for a Request",
     responses = {
@@ -129,8 +122,9 @@ public class DeployResource extends AbstractRequestResource {
   )
   public SingularityRequestParent deploy(
     @Parameter(hidden = true) @Auth SingularityUser user,
-    @Context HttpServletRequest requestContext,
-    @RequestBody(
+    HttpServletRequest requestContext,
+    @org.springframework.web.bind.annotation.RequestBody(required = false)
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
       required = true,
       description = "Deploy data"
     ) SingularityDeployRequest deployRequest,
@@ -339,8 +333,7 @@ public class DeployResource extends AbstractRequestResource {
     return fillEntireRequest(requestWithState, Optional.of(request));
   }
 
-  @DELETE
-  @Path("/deploy/{deployId}/request/{requestId}")
+  @DeleteMapping("/deploy/{deployId}/request/{requestId}")
   @Operation(
     summary = "Cancel a pending deployment (best effort - the deploy may still succeed or fail)",
     responses = {
@@ -352,7 +345,7 @@ public class DeployResource extends AbstractRequestResource {
   )
   public SingularityRequestParent cancelDeploy(
     @Parameter(hidden = true) @Auth SingularityUser user,
-    @Context HttpServletRequest requestContext,
+    HttpServletRequest requestContext,
     @Parameter(
       required = true,
       description = "The Singularity Request Id from which the deployment is removed."
@@ -410,8 +403,7 @@ public class DeployResource extends AbstractRequestResource {
     return fillEntireRequest(requestWithState);
   }
 
-  @POST
-  @Path("/update")
+  @PostMapping("/update")
   @Operation(
     summary = "Update the target active instance count for a pending deploy",
     responses = {
@@ -423,8 +415,9 @@ public class DeployResource extends AbstractRequestResource {
   )
   public SingularityRequestParent updatePendingDeploy(
     @Parameter(hidden = true) @Auth SingularityUser user,
-    @Context HttpServletRequest requestContext,
-    @RequestBody(required = true) SingularityUpdatePendingDeployRequest updateRequest
+    HttpServletRequest requestContext,
+    @org.springframework.web.bind.annotation.RequestBody(required = false)
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true) SingularityUpdatePendingDeployRequest updateRequest
   ) {
     return maybeProxyToLeader(
       requestContext,

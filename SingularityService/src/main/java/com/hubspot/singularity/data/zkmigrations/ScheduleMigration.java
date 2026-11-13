@@ -10,7 +10,7 @@ import com.hubspot.singularity.data.SingularityValidator;
 import com.hubspot.singularity.data.transcoders.Transcoder;
 import java.util.Optional;
 import javax.inject.Singleton;
-import javax.ws.rs.WebApplicationException;
+import com.hubspot.singularity.web.SingularityWebException;
 import org.apache.curator.framework.CuratorFramework;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -91,12 +91,12 @@ public class ScheduleMigration extends ZkDataMigration {
 
         try {
           newQuartzSchedule = validator.getQuartzScheduleFromCronSchedule(actualSchedule);
-        } catch (WebApplicationException e) {
+        } catch (SingularityWebException e) {
           LOG.error(
             "Failed to convert {} ({}) due to {}",
             requestWithState.getRequest().getId(),
             actualSchedule,
-            e.getResponse().getEntity()
+            e.getDetail()
           );
           continue;
         }

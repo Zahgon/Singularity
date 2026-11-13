@@ -2,9 +2,8 @@ package com.hubspot.singularity;
 
 import static java.lang.String.format;
 
-import javax.ws.rs.WebApplicationException;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
+import com.hubspot.singularity.web.SingularityWebException;
+import com.hubspot.singularity.web.StatusReasons;
 
 public final class WebExceptions {
 
@@ -57,41 +56,45 @@ public final class WebExceptions {
     return value;
   }
 
-  public static WebApplicationException badRequest(String message, Object... args) {
-    throw webException(Status.BAD_REQUEST.getStatusCode(), message, args);
+  public static SingularityWebException badRequest(String message, Object... args) {
+    throw webException(400, message, args);
   }
 
-  public static WebApplicationException timeout(String message, Object... args) {
+  public static SingularityWebException timeout(String message, Object... args) {
     throw webException(408, message, args);
   }
 
-  public static WebApplicationException conflict(String message, Object... args) {
+  public static SingularityWebException conflict(String message, Object... args) {
     if (args.length > 0) {
       message = format(message, args);
     }
-    throw new WebApplicationException(message, Status.CONFLICT);
+    throw new SingularityWebException(409, message);
   }
 
-  public static WebApplicationException notFound(String message, Object... args) {
+  public static SingularityWebException notFound(String message, Object... args) {
     if (args.length > 0) {
       message = format(message, args);
     }
-    throw new WebApplicationException(message, Status.NOT_FOUND);
+    throw new SingularityWebException(404, message);
   }
 
-  public static WebApplicationException forbidden(String message, Object... args) {
-    return webException(Status.FORBIDDEN.getStatusCode(), message, args);
+  public static SingularityWebException forbidden(String message, Object... args) {
+    return webException(403, message, args);
   }
 
-  public static WebApplicationException unauthorized(String message, Object... args) {
-    return webException(Status.UNAUTHORIZED.getStatusCode(), message, args);
+  public static SingularityWebException unauthorized(String message, Object... args) {
+    return webException(401, message, args);
   }
 
-  public static WebApplicationException rateLimited(String message, Object... args) {
+  public static SingularityWebException rateLimited(String message, Object... args) {
     return webException(429, message, args);
   }
 
-  private static WebApplicationException webException(
+  /**
+   * A refusal the service builds out of a status: what the service says about it is kept, and the answer
+   * carries the status and its reason, which is what the API has always answered for these.
+   */
+  private static SingularityWebException webException(
     int statusCode,
     String message,
     Object... formatArgs
@@ -100,8 +103,10 @@ public final class WebExceptions {
       message = format(message, formatArgs);
     }
 
-    throw new WebApplicationException(
-      Response.status(statusCode).entity(message).type("text/plain").build()
+    throw new SingularityWebException(
+      statusCode,
+      StatusReasons.message(statusCode),
+      message
     );
   }
 }

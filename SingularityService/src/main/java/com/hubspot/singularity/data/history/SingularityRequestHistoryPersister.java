@@ -25,7 +25,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import javax.inject.Singleton;
-import javax.ws.rs.HEAD;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -4,12 +4,12 @@ import com.google.common.base.Strings;
 import com.google.inject.Inject;
 import com.google.inject.ProvisionException;
 import com.google.inject.Singleton;
+import com.hubspot.singularity.web.SingularityRequestContext;
 import com.hubspot.singularity.SingularityUser;
 import com.hubspot.singularity.WebExceptions;
 import com.hubspot.singularity.auth.datastore.SingularityAuthDatastore;
 import com.hubspot.singularity.config.SingularityConfiguration;
 import java.util.Optional;
-import javax.ws.rs.container.ContainerRequestContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,7 +33,7 @@ public class SingularityHeaderPassthroughAuthenticator
       configuration.getAuthConfiguration().getRequestUserHeaderName();
   }
 
-  private Optional<String> getUserId(ContainerRequestContext context) {
+  private Optional<String> getUserId(SingularityRequestContext context) {
     try {
       return Optional.ofNullable(
         Strings.emptyToNull(context.getHeaderString(requestUserHeaderName))
@@ -44,7 +44,7 @@ public class SingularityHeaderPassthroughAuthenticator
   }
 
   @Override
-  public Optional<SingularityUser> getUser(ContainerRequestContext context) {
+  public Optional<SingularityUser> getUser(SingularityRequestContext context) {
     final Optional<String> maybeUsername = getUserId(context);
 
     if (!maybeUsername.isPresent()) {

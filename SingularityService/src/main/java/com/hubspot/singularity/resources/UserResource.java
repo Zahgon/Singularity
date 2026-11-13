@@ -5,23 +5,20 @@ import com.hubspot.singularity.SingularityUser;
 import com.hubspot.singularity.SingularityUserSettings;
 import com.hubspot.singularity.config.ApiPaths;
 import com.hubspot.singularity.data.UserManager;
-import io.dropwizard.auth.Auth;
+import com.hubspot.singularity.web.Auth;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.tags.Tags;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.MediaType;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-@Path(ApiPaths.USER_RESOURCE_PATH)
-@Produces({ MediaType.APPLICATION_JSON })
+@RestController
+@RequestMapping(ApiPaths.USER_RESOURCE_PATH)
 @Schema(title = "Retrieve or update settings for a particular user")
 @Tags({ @Tag(name = "Users") })
 public class UserResource {
@@ -32,8 +29,7 @@ public class UserResource {
     this.userManager = userManager;
   }
 
-  @GET
-  @Path("/settings")
+  @GetMapping("/settings")
   @Operation(summary = "Retrieve the settings for the current authenticated user")
   public SingularityUserSettings getUserSettings(
     @Parameter(hidden = true) @Auth SingularityUser user
@@ -43,12 +39,12 @@ public class UserResource {
       .orElse(SingularityUserSettings.empty());
   }
 
-  @POST
-  @Path("/settings")
+  @PostMapping("/settings")
   @Operation(summary = "Update the settings for the current authenticated user")
   public void setUserSettings(
     @Parameter(hidden = true) @Auth SingularityUser user,
-    @RequestBody(
+    @org.springframework.web.bind.annotation.RequestBody(required = false)
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
       required = true,
       description = "The new settings to be saved for the currently authenticated user"
     ) SingularityUserSettings settings
@@ -56,13 +52,12 @@ public class UserResource {
     userManager.updateUserSettings(user.getId(), settings);
   }
 
-  @POST
-  @Consumes({ MediaType.APPLICATION_JSON })
-  @Path("/settings/starred-requests")
+  @PostMapping(path = "/settings/starred-requests")
   @Operation(summary = "Add starred requests for the current authenticated user")
   public void addStarredRequests(
     @Parameter(hidden = true) @Auth SingularityUser user,
-    @RequestBody(
+    @org.springframework.web.bind.annotation.RequestBody(required = false)
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
       required = true,
       description = "A SingularityUserSettings object containing the new starred requests for the currently authenticated user"
     ) SingularityUserSettings settings
@@ -70,13 +65,12 @@ public class UserResource {
     userManager.addStarredRequestIds(user.getId(), settings.getStarredRequestIds());
   }
 
-  @DELETE
-  @Consumes({ MediaType.APPLICATION_JSON })
-  @Path("/settings/starred-requests")
+  @DeleteMapping(path = "/settings/starred-requests")
   @Operation(summary = "Remove starred requests for the current authenticated user")
   public void deleteStarredRequests(
     @Parameter(hidden = true) @Auth SingularityUser user,
-    @RequestBody(
+    @org.springframework.web.bind.annotation.RequestBody(required = false)
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
       required = true,
       description = "A SingularityUserSettings object containing starred requests to remove for the currently authenticated user"
     ) SingularityUserSettings settings

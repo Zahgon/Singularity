@@ -5,7 +5,6 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import com.google.inject.AbstractModule;
 import com.google.inject.Scopes;
 import com.hubspot.singularity.config.UIConfiguration;
-import com.hubspot.singularity.guice.GuicePropertyFilteringMessageBodyWriter;
 import com.hubspot.singularity.helpers.RebalancingHelper;
 
 public class SingularityResourceModule extends AbstractModule {
@@ -17,8 +16,6 @@ public class SingularityResourceModule extends AbstractModule {
 
   @Override
   protected void configure() {
-    bind(GuicePropertyFilteringMessageBodyWriter.class).in(Scopes.SINGLETON);
-
     // At least WebhookResource must not be a singleton. Make all of them
     // not singletons, just in case.
     bind(DeployResource.class);

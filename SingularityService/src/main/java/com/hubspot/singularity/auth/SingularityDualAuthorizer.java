@@ -19,7 +19,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import javax.ws.rs.WebApplicationException;
+import com.hubspot.singularity.web.SingularityWebException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,7 +72,7 @@ public class SingularityDualAuthorizer extends SingularityAuthorizer {
     );
     try {
       groupsAuthorizer.checkAdminAuthorization(user.withOnlyGroups());
-    } catch (WebApplicationException e) {
+    } catch (SingularityWebException e) {
       if (grantedByScopes) {
         LOG.warn(
           "Difference in auth of user {} for ADMIN, scopes authorizer: {}, groups authorizer: false, user: {}",
@@ -100,7 +100,7 @@ public class SingularityDualAuthorizer extends SingularityAuthorizer {
     );
     try {
       groupsAuthorizer.checkGlobalReadAuthorization(user.withOnlyGroups());
-    } catch (WebApplicationException e) {
+    } catch (SingularityWebException e) {
       if (grantedByScopes) {
         LOG.warn(
           "Difference in auth of user {} for GLOBAL READ, scopes authorizer: {}, groups authorizer: false, user: {}",
@@ -128,7 +128,7 @@ public class SingularityDualAuthorizer extends SingularityAuthorizer {
     );
     try {
       groupsAuthorizer.checkReadAuthorization(user.withOnlyGroups());
-    } catch (WebApplicationException e) {
+    } catch (SingularityWebException e) {
       if (grantedByScopes) {
         LOG.warn(
           "Difference in auth of user {} for READ, scopes authorizer: {}, groups authorizer: false, user: {}",
@@ -161,7 +161,7 @@ public class SingularityDualAuthorizer extends SingularityAuthorizer {
     );
     try {
       groupsAuthorizer.checkForAuthorization(request, user.withOnlyGroups(), scope);
-    } catch (WebApplicationException e) {
+    } catch (SingularityWebException e) {
       if (grantedByScopes) {
         LOG.warn(
           "Difference in auth of user {} for READ, scopes authorizer: {}, groups authorizer: false, user: {}",
@@ -222,7 +222,7 @@ public class SingularityDualAuthorizer extends SingularityAuthorizer {
         oldRequest,
         user.withOnlyGroups()
       );
-    } catch (WebApplicationException e) {
+    } catch (SingularityWebException e) {
       if (grantedByScopes) {
         LOG.warn(
           "Difference in auth of user {} for READ, scopes authorizer: {}, groups authorizer: false, user: {}",

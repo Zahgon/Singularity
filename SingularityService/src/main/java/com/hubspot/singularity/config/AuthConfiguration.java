@@ -3,14 +3,14 @@ package com.hubspot.singularity.config;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.Lists;
 import com.hubspot.singularity.auth.authenticator.AuthResponseParser;
-import com.hubspot.singularity.auth.dw.SingularityAuthDatastoreClass;
-import com.hubspot.singularity.auth.dw.SingularityAuthenticatorClass;
+import com.hubspot.singularity.auth.SingularityAuthDatastoreClass;
+import com.hubspot.singularity.auth.SingularityAuthenticatorClass;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import javax.validation.Valid;
-import javax.validation.constraints.NotNull;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 
 public class AuthConfiguration {
   @JsonProperty

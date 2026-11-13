@@ -15,6 +15,7 @@ import com.google.common.net.HostAndPort;
 import com.google.inject.Binder;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
+import com.google.inject.Key;
 import com.google.inject.Module;
 import com.google.inject.OutOfScopeException;
 import com.google.inject.Provider;
@@ -23,8 +24,6 @@ import com.google.inject.Stage;
 import com.google.inject.TypeLiteral;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.util.Modules;
-import com.hubspot.dropwizard.guicier.DropwizardModule;
-import com.hubspot.dropwizard.guicier.GuiceBundle;
 import com.hubspot.mesos.JavaUtils;
 import com.hubspot.mesos.client.MesosClient;
 import com.hubspot.singularity.SingularityAbort;
@@ -50,6 +49,7 @@ import com.hubspot.singularity.data.zkmigrations.SingularityZkMigrationsModule;
 import com.hubspot.singularity.event.SingularityEventModule;
 import com.hubspot.singularity.hooks.DeployAcceptanceHook;
 import com.hubspot.singularity.hooks.LoadBalancerClient;
+import com.hubspot.singularity.managed.Managed;
 import com.hubspot.singularity.managed.SingularityLifecycleManaged;
 import com.hubspot.singularity.managed.SingularityLifecycleManagedTest;
 import com.hubspot.singularity.mesos.OfferCache;
@@ -66,29 +66,23 @@ import com.hubspot.singularity.resources.RequestResource;
 import com.hubspot.singularity.resources.TaskResource;
 import com.hubspot.singularity.sentry.SingularityExceptionNotifier;
 import com.hubspot.singularity.smtp.SingularityMailer;
-import io.dropwizard.db.DataSourceFactory;
-import io.dropwizard.setup.Environment;
+import com.hubspot.singularity.config.server.DataSourceConfiguration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import net.kencochrane.raven.Raven;
 import org.apache.curator.test.TestingServer;
-import org.eclipse.jetty.util.component.LifeCycle;
 import org.jdbi.v3.core.Jdbi;
 import org.slf4j.LoggerFactory;
 
 public class SingularityTestModule implements Module {
   private final TestingServer ts;
-  private final DropwizardModule dropwizardModule;
   private final ObjectMapper om = JavaUtils.newObjectMapper();
-  private final Environment environment = new Environment(
-    "test-env",
-    om,
-    null,
-    new MetricRegistry(),
-    null
-  );
+  private final MetricRegistry metricRegistry = new MetricRegistry();
+  private Injector injector;
 
   private final boolean useDBTests;
   private final Function<SingularityConfiguration, Void> customConfigSetup;
@@ -100,8 +94,6 @@ public class SingularityTestModule implements Module {
     throws Exception {
     this.useDBTests = useDbTests;
     this.customConfigSetup = customConfigSetup;
-
-    dropwizardModule = new DropwizardModule(environment);
 
     LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
     Logger rootLogger = context.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
@@ -120,32 +112,25 @@ public class SingularityTestModule implements Module {
   }
 
   public Injector getInjector() throws Exception {
-    return Guice.createInjector(Stage.PRODUCTION, dropwizardModule, this);
+    injector = Guice.createInjector(Stage.PRODUCTION, this);
+    return injector;
   }
 
+  /**
+   * Starts what the service manages, which is the one object the service hands its own lifecycle to: it
+   * brings up the state store's client, the leader latch and the thread pools in the order the service
+   * brings them up.
+   */
   public void start() throws Exception {
-    // Start all the managed instances in dropwizard.
-    Set<LifeCycle> managedObjects = ImmutableSet.copyOf(
-      environment.lifecycle().getManagedObjects()
-    );
-    for (LifeCycle managed : managedObjects) {
-      managed.start();
-    }
+    injector.getInstance(SingularityLifecycleManaged.class).start();
   }
 
   public void stop() throws Exception {
-    ImmutableSet<LifeCycle> managedObjects = ImmutableSet.copyOf(
-      environment.lifecycle().getManagedObjects()
-    );
-    for (LifeCycle managed : Lists.reverse(managedObjects.asList())) {
-      managed.stop();
-    }
+    injector.getInstance(SingularityLifecycleManaged.class).stop();
   }
 
   @Override
   public void configure(Binder mainBinder) {
-    mainBinder.install(new GuiceBundle.GuiceEnforcerModule());
-
     TestingMesosClient tmc = new TestingMesosClient();
     mainBinder.bind(MesosClient.class).toInstance(tmc);
     mainBinder.bind(TestingMesosClient.class).toInstance(tmc);
@@ -201,7 +186,7 @@ public class SingularityTestModule implements Module {
               }
 
               binder.bind(ObjectMapper.class).toInstance(om);
-              binder.bind(Environment.class).toInstance(environment);
+              binder.bind(MetricRegistry.class).toInstance(metricRegistry);
               binder
                 .bind(HostAndPort.class)
                 .annotatedWith(named(HTTP_HOST_AND_PORT))
@@ -298,8 +283,8 @@ public class SingularityTestModule implements Module {
     mainBinder.bind(PriorityResource.class);
   }
 
-  private DataSourceFactory getDataSourceFactory() {
-    DataSourceFactory dataSourceFactory = new DataSourceFactory();
+  private DataSourceConfiguration getDataSourceFactory() {
+    DataSourceConfiguration dataSourceFactory = new DataSourceConfiguration();
     dataSourceFactory.setDriverClass("org.h2.Driver");
     dataSourceFactory.setUrl("jdbc:h2:mem:singularity;DB_CLOSE_DELAY=-1");
     dataSourceFactory.setUser("user");

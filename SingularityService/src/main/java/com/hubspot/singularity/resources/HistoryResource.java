@@ -1,7 +1,6 @@
 package com.hubspot.singularity.resources;
 
 import static com.hubspot.singularity.WebExceptions.checkBadRequest;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.Inject;
 import com.hubspot.singularity.ExtendedTaskState;
@@ -28,34 +27,32 @@ import com.hubspot.singularity.data.history.DeployTaskHistoryHelper;
 import com.hubspot.singularity.data.history.HistoryManager;
 import com.hubspot.singularity.data.history.RequestHistoryHelper;
 import com.hubspot.singularity.data.history.TaskHistoryHelper;
+import com.hubspot.singularity.web.Auth;
+import com.hubspot.singularity.web.DefaultValue;
+import com.hubspot.singularity.web.PathParam;
+import com.hubspot.singularity.web.QueryParam;
 import com.ning.http.client.AsyncHttpClient;
-import io.dropwizard.auth.Auth;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.tags.Tags;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import javax.servlet.http.HttpServletRequest;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
 import org.apache.curator.framework.recipes.leader.LeaderLatch;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-@Path(ApiPaths.HISTORY_RESOURCE_PATH)
-@Produces({ MediaType.APPLICATION_JSON })
+@RestController
+@RequestMapping(ApiPaths.HISTORY_RESOURCE_PATH)
 @Schema(title = "Manages historical data for tasks, requests, and deploys")
 @Tags({ @Tag(name = "History") })
 public class HistoryResource extends AbstractHistoryResource {
@@ -95,8 +92,7 @@ public class HistoryResource extends AbstractHistoryResource {
     this.deployTaskHistoryHelper = deployTaskHistoryHelper;
   }
 
-  @GET
-  @Path("/task/{taskId}")
+  @GetMapping("/task/{taskId}")
   @Operation(
     summary = "Retrieve the history for a specific task",
     responses = {
@@ -148,8 +144,7 @@ public class HistoryResource extends AbstractHistoryResource {
     return Optional.ofNullable((int) Math.ceil((double) dataCount.get() / count));
   }
 
-  @GET
-  @Path("/request/{requestId}/tasks/active")
+  @GetMapping("/request/{requestId}/tasks/active")
   @Operation(summary = "Retrieve the history for all active tasks of a specific request")
   public List<SingularityTaskIdHistory> getTaskHistoryForRequest(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -169,8 +164,7 @@ public class HistoryResource extends AbstractHistoryResource {
     return taskHistoryHelper.getTaskHistoriesFor(taskManager, activeTaskIds);
   }
 
-  @GET
-  @Path("/request/{requestId}/deploy/{deployId}")
+  @GetMapping("/request/{requestId}/deploy/{deployId}")
   @Operation(
     summary = "Retrieve the history for a specific deploy",
     responses = {
@@ -192,8 +186,7 @@ public class HistoryResource extends AbstractHistoryResource {
     return getDeployHistory(requestId, deployId, user);
   }
 
-  @GET
-  @Path("/request/{requestId}/deploy/{deployId}/tasks/active")
+  @GetMapping("/request/{requestId}/deploy/{deployId}/tasks/active")
   @Operation(summary = "Retrieve the task history for a specific deploy")
   public List<SingularityTaskIdHistory> getActiveDeployTasks(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -216,8 +209,7 @@ public class HistoryResource extends AbstractHistoryResource {
     return taskHistoryHelper.getTaskHistoriesFor(taskManager, activeTaskIds);
   }
 
-  @GET
-  @Path("/request/{requestId}/deploy/{deployId}/tasks/inactive")
+  @GetMapping("/request/{requestId}/deploy/{deployId}/tasks/inactive")
   @Operation(summary = "Retrieve the task history for a specific deploy")
   public List<SingularityTaskIdHistory> getInactiveDeployTasks(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -250,8 +242,7 @@ public class HistoryResource extends AbstractHistoryResource {
     return deployTaskHistoryHelper.getBlendedHistory(key, limitStart, limitCount, skipZk);
   }
 
-  @GET
-  @Path("/request/{requestId}/deploy/{deployId}/tasks/inactive/withmetadata")
+  @GetMapping("/request/{requestId}/deploy/{deployId}/tasks/inactive/withmetadata")
   @Operation(summary = "Retrieve the task history for a specific deploy")
   public SingularityPaginatedResponse<SingularityTaskIdHistory> getInactiveDeployTasksWithMetadata(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -301,8 +292,7 @@ public class HistoryResource extends AbstractHistoryResource {
     );
   }
 
-  @GET
-  @Path("/tasks")
+  @GetMapping("/tasks")
   @Operation(summary = "Retrieve the history sorted by startedAt for all inactive tasks")
   public List<SingularityTaskIdHistory> getTaskHistory(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -378,8 +368,7 @@ public class HistoryResource extends AbstractHistoryResource {
     );
   }
 
-  @GET
-  @Path("/tasks/withmetadata")
+  @GetMapping("/tasks/withmetadata")
   @Operation(summary = "Retrieve the history sorted by startedAt for all inactive tasks")
   public SingularityPaginatedResponse<SingularityTaskIdHistory> getTaskHistoryWithMetadata(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -476,8 +465,7 @@ public class HistoryResource extends AbstractHistoryResource {
     );
   }
 
-  @GET
-  @Path("/request/{requestId}/tasks")
+  @GetMapping("/request/{requestId}/tasks")
   @Operation(
     summary = "Retrieve the history sorted by startedAt for all inactive tasks of a specific request"
   )
@@ -551,8 +539,7 @@ public class HistoryResource extends AbstractHistoryResource {
     );
   }
 
-  @GET
-  @Path("/request/{requestId}/tasks/withmetadata")
+  @GetMapping("/request/{requestId}/tasks/withmetadata")
   @Operation(
     summary = "Retrieve the history count for all inactive tasks of a specific request"
   )
@@ -647,8 +634,7 @@ public class HistoryResource extends AbstractHistoryResource {
     );
   }
 
-  @GET
-  @Path("/request/{requestId}/run/{runId}")
+  @GetMapping("/request/{requestId}/run/{runId}")
   @Operation(
     summary = "Retrieve the history for a task by runId",
     responses = {
@@ -676,8 +662,7 @@ public class HistoryResource extends AbstractHistoryResource {
     return taskHistoryHelper.getByRunId(requestId, runId);
   }
 
-  @GET
-  @Path("/request/{requestId}/deploys")
+  @GetMapping("/request/{requestId}/deploys")
   @Operation(summary = "Get deploy history for a single request")
   public List<SingularityDeployHistory> getDeploys(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -711,8 +696,7 @@ public class HistoryResource extends AbstractHistoryResource {
     );
   }
 
-  @GET
-  @Path("/request/{requestId}/deploys/withmetadata")
+  @GetMapping("/request/{requestId}/deploys/withmetadata")
   @Operation(summary = "Get deploy history with metadata for a single request")
   public SingularityPaginatedResponse<SingularityDeployHistory> getDeploysWithMetadata(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -752,8 +736,7 @@ public class HistoryResource extends AbstractHistoryResource {
     );
   }
 
-  @GET
-  @Path("/request/{requestId}/requests")
+  @GetMapping("/request/{requestId}/requests")
   @Operation(summary = "Get request history for a single request")
   public List<SingularityRequestHistory> getRequestHistoryForRequest(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -802,8 +785,7 @@ public class HistoryResource extends AbstractHistoryResource {
     );
   }
 
-  @GET
-  @Path("/request/{requestId}/requests/withmetadata")
+  @GetMapping("/request/{requestId}/requests/withmetadata")
   @Operation(summary = "Get request history for a single request")
   public SingularityPaginatedResponse<SingularityRequestHistory> getRequestHistoryForRequestWithMetadata(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -854,8 +836,7 @@ public class HistoryResource extends AbstractHistoryResource {
     );
   }
 
-  @GET
-  @Path("/requests/search")
+  @GetMapping("/requests/search")
   @Operation(summary = "Search for requests")
   public List<String> getRequestHistoryForRequestLike(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -890,8 +871,7 @@ public class HistoryResource extends AbstractHistoryResource {
     ); // TODO: will this screw up pagination? A: yes.
   }
 
-  @GET
-  @Path("/request/{requestId}/command-line-args")
+  @GetMapping("/request/{requestId}/command-line-args")
   @Operation(
     summary = "Get a list of recently used command line args for an on-demand or scheduled request"
   )
@@ -957,14 +937,13 @@ public class HistoryResource extends AbstractHistoryResource {
     return args;
   }
 
-  @POST
-  @Path("/sql-backfill")
+  @PostMapping("/sql-backfill")
   @Operation(
     summary = "For upgrades to version 0.23.0, start the json column backfill in sql"
   )
-  public Response startSqlBackfill(
+  public ResponseEntity<Object> startSqlBackfill(
     @Parameter(hidden = true) @Auth SingularityUser user,
-    @Context HttpServletRequest requestContext,
+    HttpServletRequest requestContext,
     @Parameter(description = "batch size for sql SELECTs") @QueryParam(
       "batchSize"
     ) @DefaultValue("20") int batchSize
@@ -972,11 +951,11 @@ public class HistoryResource extends AbstractHistoryResource {
     authorizationHelper.checkAdminAuthorization(user);
     return maybeProxyToLeader(
       requestContext,
-      Response.class,
+      ResponseEntity.class,
       null,
       () -> {
         historyManager.startHistoryBackfill(batchSize);
-        return Response.ok().build();
+        return ResponseEntity.ok().build();
       }
     );
   }

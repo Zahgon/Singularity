@@ -1,7 +1,7 @@
 package com.hubspot.singularity;
 
 import com.google.inject.Inject;
-import io.dropwizard.lifecycle.Managed;
+import com.hubspot.singularity.managed.Managed;
 import java.io.IOException;
 import okhttp3.OkHttpClient;
 import org.slf4j.Logger;

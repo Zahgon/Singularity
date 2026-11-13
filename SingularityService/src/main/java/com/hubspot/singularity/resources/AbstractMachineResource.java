@@ -20,8 +20,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
-import javax.ws.rs.WebApplicationException;
-import javax.ws.rs.core.Response.Status;
+import com.hubspot.singularity.web.SingularityWebException;
+import com.hubspot.singularity.web.StatusReasons;
 import org.apache.curator.framework.recipes.leader.LeaderLatch;
 
 public abstract class AbstractMachineResource<T extends SingularityMachineAbstraction<T>>
@@ -85,27 +85,18 @@ public abstract class AbstractMachineResource<T extends SingularityMachineAbstra
 
     switch (result) {
       case FAILURE_NOT_FOUND:
-        throw new WebApplicationException(
+        throw new SingularityWebException(
+          404,
           String.format(
             "Couldn't find an active %s with id %s (result: %s)",
             getObjectTypeString(),
             objectId,
             result.name()
-          ),
-          Status.NOT_FOUND
+          )
         );
       case FAILURE_ALREADY_AT_STATE:
       case FAILURE_ILLEGAL_TRANSITION:
-        throw new WebApplicationException(
-          String.format(
-            "%s - %s %s is in %s state",
-            result.name(),
-            getObjectTypeString(),
-            objectId,
-            newState
-          ),
-          Status.CONFLICT
-        );
+        throw new SingularityWebException(409, StatusReasons.message(409));
       default:
         break;
     }

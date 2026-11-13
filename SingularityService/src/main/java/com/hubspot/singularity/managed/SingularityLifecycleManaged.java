@@ -16,7 +16,6 @@ import com.hubspot.singularity.mesos.SingularityMesosExecutorInfoSupport;
 import com.hubspot.singularity.metrics.SingularityGraphiteReporter;
 import com.hubspot.singularity.scheduler.SingularityLeaderOnlyPoller;
 import com.ning.http.client.AsyncHttpClient;
-import io.dropwizard.lifecycle.Managed;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.curator.framework.CuratorFramework;

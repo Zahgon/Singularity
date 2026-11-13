@@ -15,35 +15,32 @@ import com.hubspot.singularity.api.SingularityDisabledActionRequest;
 import com.hubspot.singularity.auth.SingularityAuthorizer;
 import com.hubspot.singularity.config.ApiPaths;
 import com.hubspot.singularity.data.DisasterManager;
+import com.hubspot.singularity.web.Auth;
+import com.hubspot.singularity.web.PathParam;
 import com.ning.http.client.AsyncHttpClient;
-import io.dropwizard.auth.Auth;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.tags.Tags;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
-import javax.servlet.http.HttpServletRequest;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
 import org.apache.curator.framework.recipes.leader.LeaderLatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-@Path(ApiPaths.DISASTERS_RESOURCE_PATH)
-@Produces(MediaType.APPLICATION_JSON)
+@RestController
+@RequestMapping(ApiPaths.DISASTERS_RESOURCE_PATH)
 @Schema(title = "Manages active disasters and disabled actions")
 @Tags({ @Tag(name = "Disasters") })
 public class DisastersResource extends AbstractLeaderAwareResource {
@@ -68,8 +65,7 @@ public class DisastersResource extends AbstractLeaderAwareResource {
     this.abort = abort;
   }
 
-  @GET
-  @Path("/stats")
+  @GetMapping("/stats")
   @Operation(summary = "Get current data related to disaster detection")
   public SingularityDisastersData disasterStats(
     @Parameter(hidden = true) @Auth SingularityUser user
@@ -78,8 +74,7 @@ public class DisastersResource extends AbstractLeaderAwareResource {
     return disasterManager.getDisastersData();
   }
 
-  @GET
-  @Path("/active")
+  @GetMapping("/active")
   @Operation(summary = "Get a list of current active disasters")
   public List<SingularityDisasterType> activeDisasters(
     @Parameter(hidden = true) @Auth SingularityUser user
@@ -88,8 +83,7 @@ public class DisastersResource extends AbstractLeaderAwareResource {
     return disasterManager.getActiveDisasters();
   }
 
-  @POST
-  @Path("/disable")
+  @PostMapping("/disable")
   @Operation(
     summary = "Do not allow the automated poller to disable actions when a disaster is detected"
   )
@@ -100,8 +94,7 @@ public class DisastersResource extends AbstractLeaderAwareResource {
     disasterManager.disableAutomatedDisabledActions();
   }
 
-  @POST
-  @Path("/enable")
+  @PostMapping("/enable")
   @Operation(
     summary = "Allow the automated poller to disable actions when a disaster is detected"
   )
@@ -112,8 +105,7 @@ public class DisastersResource extends AbstractLeaderAwareResource {
     disasterManager.enableAutomatedDisabledActions();
   }
 
-  @DELETE
-  @Path("/active/{type}")
+  @DeleteMapping("/active/{type}")
   @Operation(summary = "Remove an active disaster (make it inactive)")
   public void removeDisaster(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -126,8 +118,7 @@ public class DisastersResource extends AbstractLeaderAwareResource {
     disasterManager.removeDisaster(type);
   }
 
-  @POST
-  @Path("/active/{type}")
+  @PostMapping("/active/{type}")
   @Operation(summary = "Create a new active disaster")
   public void newDisaster(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -141,8 +132,7 @@ public class DisastersResource extends AbstractLeaderAwareResource {
     disasterManager.addDisabledActionsForDisasters(Collections.singletonList(type));
   }
 
-  @GET
-  @Path("/disabled-actions")
+  @GetMapping("/disabled-actions")
   @Operation(summary = "Get a list of actions that are currently disable")
   public List<SingularityDisabledAction> disabledActions(
     @Parameter(hidden = true) @Auth SingularityUser user
@@ -151,15 +141,15 @@ public class DisastersResource extends AbstractLeaderAwareResource {
     return disasterManager.getDisabledActions();
   }
 
-  @POST
-  @Path("/disabled-actions/{action}")
+  @PostMapping("/disabled-actions/{action}")
   @Operation(summary = "Disable a specific action")
   public void disableAction(
     @Parameter(hidden = true) @Auth SingularityUser user,
     @Parameter(required = true, description = "The action to disable") @PathParam(
       "action"
     ) SingularityAction action,
-    @RequestBody(
+    @org.springframework.web.bind.annotation.RequestBody(required = false)
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
       description = "Notes related to a particular disabled action"
     ) SingularityDisabledActionRequest disabledActionRequest
   ) {
@@ -173,8 +163,7 @@ public class DisastersResource extends AbstractLeaderAwareResource {
     disasterManager.disable(action, message, Optional.of(user), false, Optional.empty());
   }
 
-  @DELETE
-  @Path("/disabled-actions/{action}")
+  @DeleteMapping("/disabled-actions/{action}")
   @Operation(summary = "Re-enable a specific action if it has been disabled")
   public void enableAction(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -186,25 +175,24 @@ public class DisastersResource extends AbstractLeaderAwareResource {
     disasterManager.enable(action);
   }
 
-  @POST
-  @Path("/failover")
+  @PostMapping("/failover")
   @Operation(
     summary = "Force the leading Singularity instance to restart and give up leadership"
   )
-  public Response forceFailover(
+  public ResponseEntity<Object> forceFailover(
     @Parameter(hidden = true) @Auth SingularityUser user,
-    @Context HttpServletRequest requestContext
+    HttpServletRequest requestContext
   ) {
     authorizationHelper.checkAdminAuthorization(user);
     return maybeProxyToLeader(
       requestContext,
-      Response.class,
+      ResponseEntity.class,
       null,
       () -> this.runFailover(user)
     );
   }
 
-  private Response runFailover(SingularityUser user) {
+  private ResponseEntity<Object> runFailover(SingularityUser user) {
     CompletableFuture.runAsync(
       () -> {
         LOG.warn("Failover triggered by {}", user.getId());
@@ -217,11 +205,10 @@ public class DisastersResource extends AbstractLeaderAwareResource {
       },
       Executors.newSingleThreadExecutor()
     );
-    return Response.ok().build();
+    return ResponseEntity.ok().build();
   }
 
-  @GET
-  @Path("/firealarm")
+  @GetMapping("/firealarm")
   @Operation(summary = "Get a firealarm warning in singularity")
   public Optional<SingularityFireAlarm> getFireAlarm(
     @Parameter(hidden = true) @Auth SingularityUser user
@@ -229,8 +216,7 @@ public class DisastersResource extends AbstractLeaderAwareResource {
     return disasterManager.getFireAlarm();
   }
 
-  @POST
-  @Path("/firealarm")
+  @PostMapping("/firealarm")
   @Operation(summary = "Set a firealarm warning in singularity")
   public void enableFireAlarm(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -240,8 +226,7 @@ public class DisastersResource extends AbstractLeaderAwareResource {
     disasterManager.setFireAlarm(fireAlarm);
   }
 
-  @DELETE
-  @Path("/firealarm")
+  @DeleteMapping("/firealarm")
   @Operation(summary = "Deleting ongoing fire alarm")
   public void disableFireAlarm(@Parameter(hidden = true) @Auth SingularityUser user) {
     authorizationHelper.checkAdminAuthorization(user);

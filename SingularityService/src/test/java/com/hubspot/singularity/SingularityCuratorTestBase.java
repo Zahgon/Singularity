@@ -10,7 +10,6 @@ import com.hubspot.singularity.mesos.OfferCache;
 import com.hubspot.singularity.scheduler.SingularityLeaderCache;
 import com.hubspot.singularity.scheduler.SingularityLeaderCacheCoordinator;
 import com.hubspot.singularity.scheduler.SingularityTestModule;
-import com.squarespace.jersey2.guice.JerseyGuiceUtils;
 import java.util.Set;
 import java.util.function.Function;
 import liquibase.Liquibase;
@@ -130,7 +129,6 @@ public class SingularityCuratorTestBase {
 
   @BeforeAll
   public synchronized void setup() throws Exception {
-    JerseyGuiceUtils.reset();
     singularityTestModule = new SingularityTestModule(useDBTests, customConfigSetup);
 
     singularityTestModule.getInjector().injectMembers(this);

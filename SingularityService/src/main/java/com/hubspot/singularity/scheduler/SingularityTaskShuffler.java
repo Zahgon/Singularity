@@ -10,7 +10,6 @@ import com.hubspot.singularity.config.SingularityConfiguration;
 import com.hubspot.singularity.data.RequestManager;
 import com.hubspot.singularity.data.TaskManager;
 import com.hubspot.singularity.scheduler.SingularityTaskShuffler.OverusedResource.Type;
-import io.dropwizard.util.SizeUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +24,11 @@ public class SingularityTaskShuffler {
   private static final Logger LOG = LoggerFactory.getLogger(
     SingularityTaskShuffler.class
   );
+  private static final long BYTES_PER_MEGABYTE = 1024L * 1024L;
+
+  private static long toMegabytes(long bytes) {
+    return bytes / BYTES_PER_MEGABYTE;
+  }
 
   private final SingularityConfiguration configuration;
   private final RequestManager requestManager;
@@ -339,9 +343,9 @@ public class SingularityTaskShuffler {
     } else {
       return String.format(
         "Mem usage on slave is %sMiB / %sMiB, shuffling task using %sMiB / %sMiB to less busy host",
-        SizeUnit.BYTES.toMegabytes(((long) memUsageBytes)),
-        SizeUnit.BYTES.toMegabytes(((long) slave.usage.getSystemMemTotalBytes())),
-        SizeUnit.BYTES.toMegabytes(task.getUsage().getMemoryTotalBytes()),
+        toMegabytes(((long) memUsageBytes)),
+        toMegabytes(((long) slave.usage.getSystemMemTotalBytes())),
+        toMegabytes(task.getUsage().getMemoryTotalBytes()),
         ((long) task.getRequestedResources().getMemoryMb())
       );
     }

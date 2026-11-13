@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
-import javax.ws.rs.WebApplicationException;
+import com.hubspot.singularity.web.SingularityWebException;
 import org.apache.mesos.v1.Protos.TaskState;
 import org.apache.mesos.v1.Protos.TaskStatus.Reason;
 import org.junit.jupiter.api.Assertions;
@@ -1405,7 +1405,7 @@ public class SingularityDeploysTest extends SingularitySchedulerTestBase {
   @Test
   public void testCannotUpdateRequestDuringPendingDeployWithNewData() {
     Assertions.assertThrows(
-      WebApplicationException.class,
+      SingularityWebException.class,
       () -> {
         initRequest();
         SingularityRequest request = requestResource

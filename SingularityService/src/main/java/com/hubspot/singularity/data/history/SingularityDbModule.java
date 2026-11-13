@@ -17,19 +17,18 @@ import com.hubspot.singularity.data.usage.PostgresTaskUsageJDBI;
 import com.hubspot.singularity.data.usage.TaskUsageJDBI;
 import com.hubspot.singularity.data.usage.TaskUsageManager;
 import com.hubspot.singularity.data.usage.ZkTaskUsageManager;
-import io.dropwizard.db.DataSourceFactory;
-import io.dropwizard.jdbi3.JdbiFactory;
-import io.dropwizard.setup.Environment;
+import com.hubspot.singularity.config.server.DataSourceConfiguration;
 import java.util.Optional;
 import java.util.Set;
 import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.core.mapper.ColumnMapper;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.jackson2.Jackson2Config;
 import org.jdbi.v3.jackson2.Jackson2Plugin;
 
 public class SingularityDbModule extends AbstractModule {
-  private final Optional<DataSourceFactory> configuration;
+  private final Optional<DataSourceConfiguration> configuration;
   private final boolean sqlReadOnly;
 
   public SingularityDbModule(SingularityConfiguration configuration) {
@@ -80,21 +79,15 @@ public class SingularityDbModule extends AbstractModule {
   }
 
   static class DBIProvider implements Provider<Jdbi> {
-    private final JdbiFactory factory = new JdbiFactory();
-    private final Environment environment;
-    private final DataSourceFactory dataSourceFactory;
+    private final DataSourceConfiguration dataSourceFactory;
 
     private Set<RowMapper<?>> rowMappers = ImmutableSet.of();
     private Set<ColumnMapper<?>> columnMappers = ImmutableSet.of();
     private ObjectMapper objectMapper;
 
     @Inject
-    DBIProvider(
-      final Environment environment,
-      final SingularityConfiguration singularityConfiguration
-    )
+    DBIProvider(final SingularityConfiguration singularityConfiguration)
       throws ClassNotFoundException {
-      this.environment = environment;
       this.dataSourceFactory =
         checkNotNull(singularityConfiguration, "singularityConfiguration is null")
           .getDatabaseConfiguration()
@@ -116,13 +109,16 @@ public class SingularityDbModule extends AbstractModule {
     @Override
     public Jdbi get() {
       try {
-        Jdbi jdbi = factory.build(environment, dataSourceFactory, "db");
+        Jdbi jdbi = Jdbi.create(dataSourceFactory.build("db"));
         for (RowMapper<?> resultSetMapper : rowMappers) {
           jdbi.registerRowMapper(resultSetMapper);
         }
         for (ColumnMapper<?> resultSetMapper : columnMappers) {
           jdbi.registerColumnMapper(resultSetMapper);
         }
+        // The old framework's own factory installed this for the service; the service installs it itself
+        // now, because the interfaces its history manager asks for on demand are SQL objects.
+        jdbi.installPlugin(new SqlObjectPlugin());
         jdbi.installPlugin(new Jackson2Plugin());
         jdbi.getConfig(Jackson2Config.class).setMapper(objectMapper);
 
@@ -190,20 +186,20 @@ public class SingularityDbModule extends AbstractModule {
   }
 
   // Convenience methods for determining which database is configured
-  static boolean isH2(Optional<DataSourceFactory> dataSourceFactoryOptional) {
+  static boolean isH2(Optional<DataSourceConfiguration> dataSourceFactoryOptional) {
     return driverConfigured(dataSourceFactoryOptional, "org.h2.Driver");
   }
 
-  static boolean isMySQL(Optional<DataSourceFactory> dataSourceFactoryOptional) {
+  static boolean isMySQL(Optional<DataSourceConfiguration> dataSourceFactoryOptional) {
     return driverConfigured(dataSourceFactoryOptional, "com.mysql.jdbc.Driver");
   }
 
-  static boolean isPostgres(Optional<DataSourceFactory> dataSourceFactoryOptional) {
+  static boolean isPostgres(Optional<DataSourceConfiguration> dataSourceFactoryOptional) {
     return driverConfigured(dataSourceFactoryOptional, "org.postgresql.Driver");
   }
 
   private static boolean driverConfigured(
-    Optional<DataSourceFactory> dataSourceFactoryOptional,
+    Optional<DataSourceConfiguration> dataSourceFactoryOptional,
     String jdbcDriverclass
   ) {
     return (

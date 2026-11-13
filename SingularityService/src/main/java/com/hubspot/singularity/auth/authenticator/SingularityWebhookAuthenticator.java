@@ -10,6 +10,7 @@ import com.google.common.util.concurrent.ListenableFutureTask;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
+import com.hubspot.singularity.web.SingularityRequestContext;
 import com.hubspot.singularity.SingularityManagedThreadPoolFactory;
 import com.hubspot.singularity.SingularityUser;
 import com.hubspot.singularity.WebExceptions;
@@ -21,8 +22,7 @@ import com.ning.http.client.Response;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
-import javax.ws.rs.WebApplicationException;
-import javax.ws.rs.container.ContainerRequestContext;
+import com.hubspot.singularity.web.SingularityWebException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -88,7 +88,7 @@ public class SingularityWebhookAuthenticator implements SingularityAuthenticator
   }
 
   @Override
-  public Optional<SingularityUser> getUser(ContainerRequestContext context) {
+  public Optional<SingularityUser> getUser(SingularityRequestContext context) {
     String authHeaderValue = extractAuthHeader(context);
 
     SingularityUserPermissionsResponse permissionsResponse = verify(authHeaderValue);
@@ -96,7 +96,7 @@ public class SingularityWebhookAuthenticator implements SingularityAuthenticator
     return permissionsResponse.getUser();
   }
 
-  private String extractAuthHeader(ContainerRequestContext context) {
+  private String extractAuthHeader(SingularityRequestContext context) {
     final String authHeaderValue = context.getHeaderString(HttpHeaders.AUTHORIZATION);
 
     if (Strings.isNullOrEmpty(authHeaderValue)) {
@@ -137,8 +137,8 @@ public class SingularityWebhookAuthenticator implements SingularityAuthenticator
       if (LOG.isTraceEnabled()) {
         LOG.trace("Exception verifying token", t);
       }
-      if (t instanceof WebApplicationException) {
-        throw (WebApplicationException) t;
+      if (t instanceof SingularityWebException) {
+        throw (SingularityWebException) t;
       } else {
         throw new RuntimeException(t);
       }

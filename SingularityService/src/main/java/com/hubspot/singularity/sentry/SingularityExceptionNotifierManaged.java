@@ -1,7 +1,7 @@
 package com.hubspot.singularity.sentry;
 
 import com.google.inject.Inject;
-import io.dropwizard.lifecycle.Managed;
+import com.hubspot.singularity.managed.Managed;
 import javax.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory;
 @Singleton
 public class SingularityExceptionNotifierManaged implements Managed {
   private static final Logger LOG = LoggerFactory.getLogger(
-    NotifyingExceptionMapper.class
+    SingularityExceptionNotifierManaged.class
   );
 
   private final SingularityExceptionNotifier exceptionNotifier;

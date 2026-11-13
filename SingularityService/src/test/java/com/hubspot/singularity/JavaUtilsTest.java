@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.hubspot.jackson.datatype.protobuf.ProtobufModule;
 import com.hubspot.mesos.JavaUtils;
-import io.dropwizard.jackson.Jackson;
+import com.hubspot.singularity.jackson.SingularityObjectMappers;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -66,7 +66,7 @@ public class JavaUtilsTest {
 
   @Test
   public void testSingularityTaskIdSerialization() throws Exception {
-    ObjectMapper om = Jackson
+    ObjectMapper om = SingularityObjectMappers
       .newObjectMapper()
       .setSerializationInclusion(Include.NON_ABSENT)
       .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)

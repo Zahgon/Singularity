@@ -6,6 +6,7 @@ import com.hubspot.singularity.SingularityState;
 import com.hubspot.singularity.SingularityTaskReconciliationStatistics;
 import com.hubspot.singularity.config.ApiPaths;
 import com.hubspot.singularity.data.StateManager;
+import com.hubspot.singularity.web.QueryParam;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -13,16 +14,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.tags.Tags;
 import java.util.List;
 import java.util.Optional;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.MediaType;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-@Consumes(MediaType.APPLICATION_JSON)
-@Path(ApiPaths.STATE_RESOURCE_PATH)
-@Produces({ MediaType.APPLICATION_JSON })
+@RestController
+@RequestMapping(ApiPaths.STATE_RESOURCE_PATH)
 @Schema(title = "Provides information about the current state of Singularity")
 @Tags({ @Tag(name = "State") })
 public class StateResource {
@@ -33,14 +30,13 @@ public class StateResource {
     this.stateManager = stateManager;
   }
 
-  @GET
-  @Path("/scheduled-tasks-info")
+  @GetMapping("/scheduled-tasks-info")
   @Operation(summary = "Retrieve the scheduled tasks info.")
   public SingularityScheduledTasksInfo getScheduledTasksInfo() {
     return stateManager.getScheduledTasksInfo();
   }
 
-  @GET
+  @GetMapping
   @Operation(summary = "Retrieve information about the current state of Singularity.")
   public SingularityState getState(
     @QueryParam("skipCache") boolean skipCache,
@@ -49,8 +45,7 @@ public class StateResource {
     return stateManager.getState(skipCache, includeRequestIds);
   }
 
-  @GET
-  @Path("/requests/under-provisioned")
+  @GetMapping("/requests/under-provisioned")
   @Operation(summary = "Retrieve the list of under-provisioned request IDs.")
   public List<String> getUnderProvisionedRequestIds(
     @QueryParam("skipCache") boolean skipCache
@@ -58,8 +53,7 @@ public class StateResource {
     return stateManager.getState(skipCache, true).getUnderProvisionedRequestIds();
   }
 
-  @GET
-  @Path("/requests/over-provisioned")
+  @GetMapping("/requests/over-provisioned")
   @Operation(summary = "Retrieve the list of over-provisioned request IDs.")
   public List<String> getOverProvisionedRequestIds(
     @QueryParam("skipCache") boolean skipCache
@@ -67,8 +61,7 @@ public class StateResource {
     return stateManager.getState(skipCache, true).getOverProvisionedRequestIds();
   }
 
-  @GET
-  @Path("/task-reconciliation")
+  @GetMapping("/task-reconciliation")
   @Operation(
     summary = "Retrieve information about the most recent task reconciliation",
     responses = {

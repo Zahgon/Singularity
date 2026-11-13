@@ -11,6 +11,14 @@
   <artifactId>EmbedSingularityExample</artifactId>
 
   <properties>
+    <!-- The module embeds the service, so it is built for the JDK the service is built for and takes the
+         library versions the service's framework manages. -->
+    <project.build.targetJdk>17</project.build.targetJdk>
+    <basepom.check.skip-dependency-versions-check>true</basepom.check.skip-dependency-versions-check>
+    <basepom.check.skip-dependency-management>true</basepom.check.skip-dependency-management>
+    <basepom.check.skip-dependency>true</basepom.check.skip-dependency>
+    <basepom.check.skip-findbugs>true</basepom.check.skip-findbugs>
+    <basepom.check.skip-pmd>true</basepom.check.skip-pmd>
     <basepom.shaded.main-class>com.hubspot.singularity.EmbeddedSingularityExample</basepom.shaded.main-class>
   </properties>
 

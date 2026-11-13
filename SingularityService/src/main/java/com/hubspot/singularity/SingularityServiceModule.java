@@ -5,10 +5,10 @@ import com.google.inject.Binder;
 import com.google.inject.Module;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
-import com.hubspot.dropwizard.guicier.DropwizardAwareModule;
+import com.hubspot.singularity.guice.ConfiguredModule;
 import com.hubspot.mesos.client.SingularityMesosClientModule;
 import com.hubspot.mesos.client.UserAndPassword;
-import com.hubspot.singularity.auth.dw.SingularityAuthenticatorClass;
+import com.hubspot.singularity.auth.SingularityAuthenticatorClass;
 import com.hubspot.singularity.config.IndexViewConfiguration;
 import com.hubspot.singularity.config.MesosConfiguration;
 import com.hubspot.singularity.config.SingularityConfiguration;
@@ -21,15 +21,12 @@ import com.hubspot.singularity.event.SingularityEventModule;
 import com.hubspot.singularity.hooks.BaragonLoadBalancerClientImpl;
 import com.hubspot.singularity.hooks.LoadBalancerClient;
 import com.hubspot.singularity.hooks.NoOpLoadBalancerClient;
-import com.hubspot.singularity.jersey.SingularityJerseyModule;
 import com.hubspot.singularity.mesos.SingularityMesosModule;
-import com.hubspot.singularity.resources.SingularityOpenApiResource;
 import com.hubspot.singularity.resources.SingularityResourceModule;
 import com.hubspot.singularity.scheduler.SingularitySchedulerModule;
 import java.util.Optional;
 
-public class SingularityServiceModule
-  extends DropwizardAwareModule<SingularityConfiguration> {
+public class SingularityServiceModule extends ConfiguredModule {
   private final Function<SingularityConfiguration, Module> dbModuleProvider;
   private Optional<Class<? extends LoadBalancerClient>> lbClientClass = Optional.empty();
 
@@ -73,7 +70,6 @@ public class SingularityServiceModule
     binder.install(dbModuleProvider.apply(getConfiguration()));
     binder.install(new SingularityMesosModule());
     binder.install(new SingularityZkMigrationsModule());
-    binder.install(new SingularityJerseyModule());
 
     MesosConfiguration mesosConfiguration = getConfiguration().getMesosConfiguration();
     if (
@@ -91,9 +87,6 @@ public class SingularityServiceModule
     } else {
       binder.install(new SingularityMesosClientModule());
     }
-
-    // API Docs
-    getEnvironment().jersey().register(SingularityOpenApiResource.class);
 
     binder.install(
       new SingularityEventModule(getConfiguration().getWebhookQueueConfiguration())

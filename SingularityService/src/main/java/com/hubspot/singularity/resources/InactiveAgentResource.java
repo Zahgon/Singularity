@@ -5,23 +5,22 @@ import com.hubspot.singularity.SingularityUser;
 import com.hubspot.singularity.auth.SingularityAuthorizer;
 import com.hubspot.singularity.config.ApiPaths;
 import com.hubspot.singularity.data.InactiveAgentManager;
-import io.dropwizard.auth.Auth;
+import com.hubspot.singularity.web.Auth;
+import com.hubspot.singularity.web.QueryParam;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.tags.Tags;
 import java.util.Set;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.MediaType;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-@Path(ApiPaths.INACTIVE_AGENTS_RESOURCE_PATH)
-@Produces(MediaType.APPLICATION_JSON)
+@RestController
+@RequestMapping(ApiPaths.INACTIVE_AGENTS_RESOURCE_PATH)
 @Schema(title = "Manage Singularity machines that should be marked as inactive")
 @Tags({ @Tag(name = "Inactive Machines") })
 public class InactiveAgentResource {
@@ -37,13 +36,13 @@ public class InactiveAgentResource {
     this.authorizationHelper = authorizationHelper;
   }
 
-  @GET
+  @GetMapping
   @Operation(summary = "Retrieve a list of agents marked as inactive")
   public Set<String> getInactiveSlaves() {
     return inactiveAgentManager.getInactiveAgents();
   }
 
-  @POST
+  @PostMapping
   @Operation(summary = "Mark an agent as inactive")
   public void deactivateSlave(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -55,7 +54,7 @@ public class InactiveAgentResource {
     inactiveAgentManager.deactivateAgent(host);
   }
 
-  @DELETE
+  @DeleteMapping
   @Operation(summary = "Remove a host from teh deactivated list")
   public void reactivateSlave(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -68,8 +67,7 @@ public class InactiveAgentResource {
     inactiveAgentManager.activateAgent(host);
   }
 
-  @DELETE
-  @Path("/all")
+  @DeleteMapping("/all")
   public void clearAllInactiveHosts(@Auth SingularityUser user) {
     authorizationHelper.checkAdminAuthorization(user);
     inactiveAgentManager.getInactiveAgents().forEach(inactiveAgentManager::activateAgent);

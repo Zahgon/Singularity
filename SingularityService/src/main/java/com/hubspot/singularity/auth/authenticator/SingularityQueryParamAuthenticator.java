@@ -3,11 +3,11 @@ package com.hubspot.singularity.auth.authenticator;
 import com.google.common.base.Strings;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import com.hubspot.singularity.web.SingularityRequestContext;
 import com.hubspot.singularity.SingularityUser;
 import com.hubspot.singularity.WebExceptions;
 import com.hubspot.singularity.auth.datastore.SingularityAuthDatastore;
 import java.util.Optional;
-import javax.ws.rs.container.ContainerRequestContext;
 
 @Singleton
 public class SingularityQueryParamAuthenticator implements SingularityAuthenticator {
@@ -19,9 +19,9 @@ public class SingularityQueryParamAuthenticator implements SingularityAuthentica
   }
 
   @Override
-  public Optional<SingularityUser> getUser(ContainerRequestContext context) {
+  public Optional<SingularityUser> getUser(SingularityRequestContext context) {
     final Optional<String> maybeUserId = Optional.ofNullable(
-      Strings.emptyToNull(context.getUriInfo().getQueryParameters().getFirst("user"))
+      Strings.emptyToNull(context.getFirstQueryParameter("user"))
     );
 
     if (!maybeUserId.isPresent()) {

@@ -3,18 +3,14 @@ package com.hubspot.singularity.resources.ui;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import com.hubspot.singularity.resources.SingularityServiceUIModule;
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
-import javax.ws.rs.core.UriBuilder;
-import javax.ws.rs.core.UriInfo;
+import java.net.URI;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-@Path("/")
-@Produces(MediaType.TEXT_HTML)
+@RestController
+@RequestMapping("/")
 public class IndexResource {
   private final String singularityUriBase;
 
@@ -25,17 +21,11 @@ public class IndexResource {
     this.singularityUriBase = singularityUriBase;
   }
 
-  @GET
-  @Path("/")
-  public Response getIndex(@Context UriInfo info) {
-    return Response
-      .status(Status.MOVED_PERMANENTLY)
-      .location(
-        UriBuilder
-          .fromPath(singularityUriBase)
-          .path(UiResource.UI_RESOURCE_LOCATION)
-          .build()
-      )
+  @GetMapping("/")
+  public ResponseEntity<Object> getIndex() {
+    return ResponseEntity
+      .status(301)
+      .location(URI.create(singularityUriBase + UiResource.UI_RESOURCE_LOCATION))
       .build();
   }
 }

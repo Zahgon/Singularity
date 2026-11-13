@@ -3,12 +3,10 @@ package com.hubspot.singularity.resources;
 import static com.hubspot.singularity.WebExceptions.checkBadRequest;
 import static com.hubspot.singularity.WebExceptions.checkConflict;
 import static com.hubspot.singularity.WebExceptions.checkNotNullBadRequest;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.inject.Inject;
-import com.hubspot.jackson.jaxrs.PropertyFiltering;
 import com.hubspot.singularity.AgentPlacement;
 import com.hubspot.singularity.CrashLoopInfo;
 import com.hubspot.singularity.MachineState;
@@ -71,16 +69,19 @@ import com.hubspot.singularity.helpers.RequestHelper;
 import com.hubspot.singularity.mesos.SingularityAgentAndRackManager;
 import com.hubspot.singularity.sentry.SingularityExceptionNotifier;
 import com.hubspot.singularity.smtp.SingularityMailer;
+import com.hubspot.singularity.web.Auth;
+import com.hubspot.singularity.web.PathParam;
+import com.hubspot.singularity.web.PropertyFiltering;
+import com.hubspot.singularity.web.QueryParam;
 import com.ning.http.client.AsyncHttpClient;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import io.dropwizard.auth.Auth;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.tags.Tags;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -89,26 +90,20 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.servlet.http.HttpServletRequest;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.GET;
-import javax.ws.rs.HEAD;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
 import org.apache.curator.framework.recipes.leader.LeaderLatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RestController;
 
-@Path(ApiPaths.REQUEST_RESOURCE_PATH)
-@Produces({ MediaType.APPLICATION_JSON })
+@RestController
+@RequestMapping(ApiPaths.REQUEST_RESOURCE_PATH)
 @Schema(title = "Manages Singularity Requests, the parent object for any deployed task")
 @Tags({ @Tag(name = "Requests") })
 public class RequestResource extends AbstractRequestResource {
@@ -348,8 +343,7 @@ public class RequestResource extends AbstractRequestResource {
     );
   }
 
-  @POST
-  @Consumes({ MediaType.APPLICATION_JSON })
+  @PostMapping
   @Operation(
     summary = "Create or update a Singularity Request",
     responses = {
@@ -362,8 +356,9 @@ public class RequestResource extends AbstractRequestResource {
   )
   public SingularityRequestParent postRequest(
     @Parameter(hidden = true) @Auth SingularityUser user,
-    @Context HttpServletRequest requestContext,
-    @RequestBody(
+    HttpServletRequest requestContext,
+    @org.springframework.web.bind.annotation.RequestBody(required = false)
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
       required = true,
       description = "The Singularity request to create or update"
     ) SingularityRequest request
@@ -405,8 +400,7 @@ public class RequestResource extends AbstractRequestResource {
     return maybeDeployId.get();
   }
 
-  @POST
-  @Path("/request/{requestId}/groups")
+  @PostMapping("/request/{requestId}/groups")
   @Operation(
     summary = "Update the group, readOnlyGroups, and readWriteGroups for a SingularityRequest",
     responses = {
@@ -423,8 +417,9 @@ public class RequestResource extends AbstractRequestResource {
       required = true,
       description = "The id of the request to update"
     ) @PathParam("requestId") String requestId,
-    @Context HttpServletRequest requestContext,
-    @RequestBody(
+    HttpServletRequest requestContext,
+    @org.springframework.web.bind.annotation.RequestBody(required = false)
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
       required = true,
       description = "Updated group settings"
     ) SingularityUpdateGroupsRequest updateGroupsRequest
@@ -474,8 +469,7 @@ public class RequestResource extends AbstractRequestResource {
     return fillEntireRequest(fetchRequestWithState(requestId, user));
   }
 
-  @POST
-  @Path("/request/{requestId}/groups/auth-check")
+  @PostMapping("/request/{requestId}/groups/auth-check")
   @Operation(
     summary = "Check authorization for updating the group, readOnlyGroups, and readWriteGroups for a SingularityRequest, without committing the change",
     responses = {
@@ -486,13 +480,14 @@ public class RequestResource extends AbstractRequestResource {
       )
     }
   )
-  public Response checkAuthForGroupsUpdate(
+  public ResponseEntity<Object> checkAuthForGroupsUpdate(
     @Parameter(hidden = true) @Auth SingularityUser user,
     @Parameter(
       required = true,
       description = "The id of the request to update"
     ) @PathParam("requestId") String requestId,
-    @RequestBody(
+    @org.springframework.web.bind.annotation.RequestBody(required = false)
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
       required = true,
       description = "Updated group settings"
     ) SingularityUpdateGroupsRequest updateGroupsRequest
@@ -513,7 +508,7 @@ public class RequestResource extends AbstractRequestResource {
         user,
         SingularityAuthorizationScope.WRITE
       );
-      return Response.ok().build();
+      return ResponseEntity.ok().build();
     }
     SingularityRequestWithState oldRequestWithState = maybeOldRequestWithState.get();
     authorizationHelper.checkForAuthorization(
@@ -535,26 +530,22 @@ public class RequestResource extends AbstractRequestResource {
       oldRequestWithState.getRequest(),
       user
     );
-    return Response.ok().build();
+    return ResponseEntity.ok().build();
   }
 
-  @POST
-  @Path("/request/{requestId}/bounce")
-  @Operation(summary = "Trigger a bounce for a request")
+    @Operation(summary = "Trigger a bounce for a request")
   @SuppressFBWarnings("NP_NULL_PARAM_DEREF_ALL_TARGETS_DANGEROUS")
   public SingularityRequestParent bounce(
     @Parameter(hidden = true) @Auth SingularityUser user,
     @Parameter(required = true, description = "The request to bounce") @PathParam(
       "requestId"
     ) String requestId,
-    @Context HttpServletRequest requestContext
+    HttpServletRequest requestContext
   ) {
     return bounce(user, requestId, requestContext, null);
   }
 
-  @POST
-  @Path("/request/{requestId}/bounce")
-  @Consumes({ MediaType.APPLICATION_JSON })
+  @PostMapping(path = "/request/{requestId}/bounce")
   @Operation(
     summary = "Bounce a specific Singularity request. A bounce launches replacement task(s), and then kills the original task(s) if the replacement(s) are healthy"
   )
@@ -563,8 +554,9 @@ public class RequestResource extends AbstractRequestResource {
     @Parameter(required = true, description = "The request ID to bounce") @PathParam(
       "requestId"
     ) String requestId,
-    @Context HttpServletRequest requestContext,
-    @RequestBody(
+    HttpServletRequest requestContext,
+    @org.springframework.web.bind.annotation.RequestBody(required = false)
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
       description = "Bounce request options"
     ) SingularityBounceRequest bounceRequest
   ) {
@@ -687,9 +679,7 @@ public class RequestResource extends AbstractRequestResource {
     return fillEntireRequest(requestWithState);
   }
 
-  @POST
-  @Path("/request/{requestId}/run")
-  @Consumes({ MediaType.APPLICATION_JSON })
+  @PostMapping(path = "/request/{requestId}/run")
   @Operation(
     summary = "Schedule a one-off or scheduled Singularity request for immediate or delayed execution",
     responses = {
@@ -704,9 +694,10 @@ public class RequestResource extends AbstractRequestResource {
     @Parameter(required = true, description = "The request ID to run") @PathParam(
       "requestId"
     ) String requestId,
-    @Parameter(hidden = true) @Context HttpServletRequest requestContext,
+    @Parameter(hidden = true) HttpServletRequest requestContext,
     @QueryParam("minimal") Boolean minimalReturn,
-    @RequestBody(
+    @org.springframework.web.bind.annotation.RequestBody(required = false)
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
       description = "Settings specific to this run of the request"
     ) SingularityRunNowRequest runNowRequest
   ) {
@@ -867,8 +858,7 @@ public class RequestResource extends AbstractRequestResource {
     }
   }
 
-  @GET
-  @Path("/request/{requestId}/run/{runId}")
+  @GetMapping("/request/{requestId}/run/{runId}")
   @Operation(
     summary = "Retrieve an active task by runId",
     responses = {
@@ -896,9 +886,7 @@ public class RequestResource extends AbstractRequestResource {
     return taskManager.getTaskByRunId(requestId, runId);
   }
 
-  @POST
-  @Path("/request/{requestId}/pause")
-  @Operation(
+    @Operation(
     summary = "Pause a Singularity request, future tasks will not run until it is manually unpaused. API can optionally choose to kill existing tasks",
     responses = {
       @ApiResponse(
@@ -913,14 +901,12 @@ public class RequestResource extends AbstractRequestResource {
     @Parameter(required = true, description = "The request ID to pause") @PathParam(
       "requestId"
     ) String requestId,
-    @Context HttpServletRequest requestContext
+    HttpServletRequest requestContext
   ) {
     return pause(user, requestId, requestContext, null);
   }
 
-  @POST
-  @Path("/request/{requestId}/pause")
-  @Consumes({ MediaType.APPLICATION_JSON })
+  @PostMapping(path = "/request/{requestId}/pause")
   @Operation(
     summary = "Pause a Singularity request, future tasks will not run until it is manually unpaused. API can optionally choose to kill existing tasks",
     responses = {
@@ -935,8 +921,9 @@ public class RequestResource extends AbstractRequestResource {
     @Parameter(required = true, description = "The request ID to pause") @PathParam(
       "requestId"
     ) String requestId,
-    @Context HttpServletRequest requestContext,
-    @RequestBody(
+    HttpServletRequest requestContext,
+    @org.springframework.web.bind.annotation.RequestBody(required = false)
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
       description = "Pause Request Options"
     ) SingularityPauseRequest pauseRequest
   ) {
@@ -1046,20 +1033,16 @@ public class RequestResource extends AbstractRequestResource {
     );
   }
 
-  @POST
-  @Path("/request/{requestId}/unpause")
-  @SuppressFBWarnings("NP_NULL_PARAM_DEREF_ALL_TARGETS_DANGEROUS")
+    @SuppressFBWarnings("NP_NULL_PARAM_DEREF_ALL_TARGETS_DANGEROUS")
   public SingularityRequestParent unpauseNoBody(
     @Parameter(hidden = true) @Auth SingularityUser user,
     @PathParam("requestId") String requestId,
-    @Context HttpServletRequest requestContext
+    HttpServletRequest requestContext
   ) {
     return unpause(user, requestId, requestContext, null);
   }
 
-  @POST
-  @Path("/request/{requestId}/unpause")
-  @Consumes({ MediaType.APPLICATION_JSON })
+  @PostMapping(path = "/request/{requestId}/unpause")
   @Operation(
     summary = "Unpause a Singularity Request, scheduling new tasks immediately",
     responses = {
@@ -1071,8 +1054,9 @@ public class RequestResource extends AbstractRequestResource {
     @Parameter(required = true, description = "The request ID to unpause") @PathParam(
       "requestId"
     ) String requestId,
-    @Context HttpServletRequest requestContext,
-    @RequestBody(
+    HttpServletRequest requestContext,
+    @org.springframework.web.bind.annotation.RequestBody(required = false)
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
       description = "Settings for how the unpause should behave"
     ) SingularityUnpauseRequest unpauseRequest
   ) {
@@ -1134,23 +1118,19 @@ public class RequestResource extends AbstractRequestResource {
     );
   }
 
-  @POST
-  @Path("/request/{requestId}/exit-cooldown")
-  @Operation(summary = "Immediately exits cooldown, scheduling new tasks immediately")
+    @Operation(summary = "Immediately exits cooldown, scheduling new tasks immediately")
   @SuppressFBWarnings("NP_NULL_PARAM_DEREF_ALL_TARGETS_DANGEROUS")
   public SingularityRequestParent exitCooldown(
     @Parameter(hidden = true) @Auth SingularityUser user,
     @Parameter(required = true, description = "The request to operate on") @PathParam(
       "requestId"
     ) String requestId,
-    @Context HttpServletRequest requestContext
+    HttpServletRequest requestContext
   ) {
     return exitCooldown(user, requestId, requestContext, null);
   }
 
-  @POST
-  @Path("/request/{requestId}/exit-cooldown")
-  @Consumes({ MediaType.APPLICATION_JSON })
+  @PostMapping(path = "/request/{requestId}/exit-cooldown")
   @Operation(
     summary = "Immediately exits cooldown, scheduling new tasks immediately",
     responses = {
@@ -1162,8 +1142,9 @@ public class RequestResource extends AbstractRequestResource {
     @Parameter(required = true, description = "The request to operate on") @PathParam(
       "requestId"
     ) String requestId,
-    @Context HttpServletRequest requestContext,
-    @RequestBody(
+    HttpServletRequest requestContext,
+    @org.springframework.web.bind.annotation.RequestBody(required = false)
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
       description = "Settings related to how an exit cooldown should behave"
     ) SingularityExitCooldownRequest exitCooldownRequest
   ) {
@@ -1237,8 +1218,7 @@ public class RequestResource extends AbstractRequestResource {
     return fillEntireRequest(requestWithState);
   }
 
-  @GET
-  @Path("/batch")
+  @GetMapping("/batch")
   @Operation(summary = "Retrieve a specific batch of requests")
   public SingularityRequestBatch getRequestsBatch(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -1259,9 +1239,8 @@ public class RequestResource extends AbstractRequestResource {
     return new SingularityRequestBatch(found, notFound);
   }
 
-  @GET
+  @GetMapping("/active")
   @PropertyFiltering
-  @Path("/active")
   @Operation(summary = "Retrieve the list of active requests")
   public List<SingularityRequestParent> getActiveRequests(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -1295,8 +1274,7 @@ public class RequestResource extends AbstractRequestResource {
     );
   }
 
-  @GET
-  @Path("/ids")
+  @GetMapping("/ids")
   @Operation(summary = "Retrieve the list of all request ids")
   public List<String> getAllRequestIds(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -1330,8 +1308,7 @@ public class RequestResource extends AbstractRequestResource {
     }
   }
 
-  @GET
-  @Path("/ids/active")
+  @GetMapping("/ids/active")
   @Operation(summary = "Retrieve the list of active request ids")
   public List<String> getActiveRequestIds(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -1349,9 +1326,8 @@ public class RequestResource extends AbstractRequestResource {
       .collect(Collectors.toList());
   }
 
-  @GET
+  @GetMapping("/paused")
   @PropertyFiltering
-  @Path("/paused")
   @Operation(summary = "Retrieve the list of paused requests")
   public List<SingularityRequestParent> getPausedRequests(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -1385,9 +1361,8 @@ public class RequestResource extends AbstractRequestResource {
     );
   }
 
-  @GET
+  @GetMapping("/cooldown")
   @PropertyFiltering
-  @Path("/cooldown")
   @Operation(summary = "Retrieve the list of requests in system cooldown")
   public List<SingularityRequestParent> getCooldownRequests(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -1421,9 +1396,8 @@ public class RequestResource extends AbstractRequestResource {
     );
   }
 
-  @GET
+  @GetMapping("/finished")
   @PropertyFiltering
-  @Path("/finished")
   @Operation(
     summary = "Retreive the list of finished requests (Scheduled requests which have exhausted their schedules)"
   )
@@ -1451,7 +1425,7 @@ public class RequestResource extends AbstractRequestResource {
     );
   }
 
-  @GET
+  @GetMapping
   @PropertyFiltering
   @Operation(summary = "Retrieve the list of all requests")
   public List<SingularityRequestParent> getRequests(
@@ -1511,9 +1485,8 @@ public class RequestResource extends AbstractRequestResource {
     return requests;
   }
 
-  @GET
+  @GetMapping("/queued/pending")
   @PropertyFiltering
-  @Path("/queued/pending")
   @Operation(summary = "Retrieve the list of pending requests")
   public List<SingularityPendingRequest> getPendingRequests(
     @Parameter(hidden = true) @Auth SingularityUser user
@@ -1526,9 +1499,8 @@ public class RequestResource extends AbstractRequestResource {
     );
   }
 
-  @GET
+  @GetMapping("/queued/cleanup")
   @PropertyFiltering
-  @Path("/queued/cleanup")
   @Operation(summary = "Retrieve the list of requests being cleaned up")
   public List<SingularityRequestCleanup> getCleanupRequests(
     @Parameter(hidden = true) @Auth SingularityUser user
@@ -1541,8 +1513,7 @@ public class RequestResource extends AbstractRequestResource {
     );
   }
 
-  @GET
-  @Path("/request/{requestId}")
+  @GetMapping("/request/{requestId}")
   @Operation(
     summary = "Retrieve a specific Request by ID",
     responses = {
@@ -1570,8 +1541,7 @@ public class RequestResource extends AbstractRequestResource {
     return fillEntireRequest(fetchRequestWithState(requestId, false, false, user));
   }
 
-  @GET
-  @Path("/request/{requestId}/simple")
+  @GetMapping("/request/{requestId}/simple")
   @Operation(
     summary = "Retrieve a specific Request by ID without additional deploy/task information",
     responses = {
@@ -1590,9 +1560,7 @@ public class RequestResource extends AbstractRequestResource {
     return fetchRequestWithState(requestId, useWebCache(useWebCache), false, user);
   }
 
-  @DELETE
-  @Path("/request/{requestId}")
-  @Consumes({ MediaType.APPLICATION_JSON })
+  @DeleteMapping(path = "/request/{requestId}")
   @Operation(
     summary = "Delete a specific Request by ID and return the deleted Request",
     responses = {
@@ -1604,8 +1572,9 @@ public class RequestResource extends AbstractRequestResource {
     @Parameter(required = true, description = "The request ID to delete") @PathParam(
       "requestId"
     ) String requestId,
-    @Context HttpServletRequest requestContext,
-    @RequestBody(
+    HttpServletRequest requestContext,
+    @org.springframework.web.bind.annotation.RequestBody(required = false)
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
       description = "Delete options"
     ) SingularityDeleteRequestRequest deleteRequest
   ) {
@@ -1657,9 +1626,7 @@ public class RequestResource extends AbstractRequestResource {
     return request;
   }
 
-  @PUT
-  @Path("/request/{requestId}/priority")
-  @Consumes({ MediaType.APPLICATION_JSON })
+  @PutMapping(path = "/request/{requestId}/priority")
   @Operation(
     summary = "Set the task scheduling priority for the request",
     responses = {
@@ -1672,8 +1639,9 @@ public class RequestResource extends AbstractRequestResource {
       required = true,
       description = "The Request ID to modify priority for"
     ) @PathParam("requestId") String requestId,
-    @Context HttpServletRequest requestContext,
-    @RequestBody(
+    HttpServletRequest requestContext,
+    @org.springframework.web.bind.annotation.RequestBody(required = false)
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
       description = "Request priority (0.0 to 1.0)"
     ) SingularityPriorityRequest priorityRequest
   ) {
@@ -1685,8 +1653,7 @@ public class RequestResource extends AbstractRequestResource {
     );
   }
 
-  @DELETE
-  @Path("/request/{requestId}/priority")
+  @DeleteMapping("/request/{requestId}/priority")
   @Operation(
     summary = "Delete/cancel the expiring request priority change. This makes the request priority change permanent",
     responses = {
@@ -1764,9 +1731,7 @@ public class RequestResource extends AbstractRequestResource {
     return fillEntireRequest(fetchRequestWithState(requestId, user));
   }
 
-  @PUT
-  @Path("/request/{requestId}/scale")
-  @Consumes({ MediaType.APPLICATION_JSON })
+  @PutMapping(path = "/request/{requestId}/scale")
   @Operation(
     summary = "Scale the number of instances up or down for a specific Request",
     responses = {
@@ -1778,8 +1743,9 @@ public class RequestResource extends AbstractRequestResource {
     @Parameter(required = true, description = "The Request ID to scale") @PathParam(
       "requestId"
     ) String requestId,
-    @Context HttpServletRequest requestContext,
-    @RequestBody(
+    HttpServletRequest requestContext,
+    @org.springframework.web.bind.annotation.RequestBody(required = false)
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
       required = true,
       description = "Object to hold number of instances to request"
     ) SingularityScaleRequest scaleRequest,
@@ -1961,8 +1927,7 @@ public class RequestResource extends AbstractRequestResource {
     return fillEntireRequest(requestWithState);
   }
 
-  @DELETE
-  @Path("/request/{requestId}/scale")
+  @DeleteMapping("/request/{requestId}/scale")
   @Operation(
     summary = "Delete/cancel the expiring scale. This makes the scale request permanent",
     responses = {
@@ -1982,8 +1947,7 @@ public class RequestResource extends AbstractRequestResource {
   }
 
   @Deprecated
-  @DELETE
-  @Path("/request/{requestId}/skipHealthchecks")
+  @DeleteMapping("/request/{requestId}/skipHealthchecks")
   @Operation(
     summary = "Delete/cancel the expiring skipHealthchecks. This makes the skipHealthchecks request permanent",
     responses = {
@@ -2002,8 +1966,7 @@ public class RequestResource extends AbstractRequestResource {
     return deleteExpiringSkipHealthchecks(user, requestId);
   }
 
-  @DELETE
-  @Path("/request/{requestId}/skip-healthchecks")
+  @DeleteMapping("/request/{requestId}/skip-healthchecks")
   @Operation(
     summary = "Delete/cancel the expiring skipHealthchecks. This makes the skipHealthchecks request permanent",
     responses = {
@@ -2026,8 +1989,7 @@ public class RequestResource extends AbstractRequestResource {
     );
   }
 
-  @DELETE
-  @Path("/request/{requestId}/pause")
+  @DeleteMapping("/request/{requestId}/pause")
   @Operation(
     summary = "Delete/cancel the expiring pause. This makes the pause request permanent",
     responses = {
@@ -2046,8 +2008,7 @@ public class RequestResource extends AbstractRequestResource {
     return deleteExpiringObject(SingularityExpiringPause.class, requestId, user);
   }
 
-  @DELETE
-  @Path("/request/{requestId}/bounce")
+  @DeleteMapping("/request/{requestId}/bounce")
   @Operation(
     summary = "Delete/cancel the expiring bounce. This makes the bounce request permanent",
     responses = {
@@ -2067,9 +2028,7 @@ public class RequestResource extends AbstractRequestResource {
   }
 
   @Deprecated
-  @PUT
-  @Path("/request/{requestId}/skipHealthchecks")
-  @Consumes({ MediaType.APPLICATION_JSON })
+  @PutMapping(path = "/request/{requestId}/skipHealthchecks")
   @Operation(
     summary = "Update the skipHealthchecks field for the request, possibly temporarily",
     responses = {
@@ -2081,17 +2040,16 @@ public class RequestResource extends AbstractRequestResource {
     @Parameter(required = true, description = "The Request ID to scale") @PathParam(
       "requestId"
     ) String requestId,
-    @Context HttpServletRequest requestContext,
-    @RequestBody(
+    HttpServletRequest requestContext,
+    @org.springframework.web.bind.annotation.RequestBody(required = false)
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
       description = "SkipHealtchecks options"
     ) SingularitySkipHealthchecksRequest skipHealthchecksRequest
   ) {
     return skipHealthchecks(user, requestId, requestContext, skipHealthchecksRequest);
   }
 
-  @PUT
-  @Path("/request/{requestId}/skip-healthchecks")
-  @Consumes({ MediaType.APPLICATION_JSON })
+  @PutMapping(path = "/request/{requestId}/skip-healthchecks")
   @Operation(
     summary = "Update the skipHealthchecks field for the request, possibly temporarily",
     responses = {
@@ -2104,8 +2062,9 @@ public class RequestResource extends AbstractRequestResource {
       required = true,
       description = "The Request ID to skip healthchecks for"
     ) @PathParam("requestId") String requestId,
-    @Context HttpServletRequest requestContext,
-    @RequestBody(
+    HttpServletRequest requestContext,
+    @org.springframework.web.bind.annotation.RequestBody(required = false)
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
       description = "SkipHealtchecks options"
     ) SingularitySkipHealthchecksRequest skipHealthchecksRequest
   ) {
@@ -2160,9 +2119,8 @@ public class RequestResource extends AbstractRequestResource {
     return fillEntireRequest(fetchRequestWithState(requestId, user));
   }
 
-  @GET
+  @GetMapping("/lbcleanup")
   @PropertyFiltering
-  @Path("/lbcleanup")
   @Operation(summary = "Retrieve the list of tasks being cleaned from load balancers.")
   public Iterable<String> getLbCleanupRequests(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -2178,8 +2136,7 @@ public class RequestResource extends AbstractRequestResource {
     );
   }
 
-  @GET
-  @Path("/crashloops")
+  @GetMapping("/crashloops")
   @Operation(summary = "Retrieve a map of all open crash loop details for all requests")
   public Map<String, List<CrashLoopInfo>> getAllCrashLoops(
     @Parameter(hidden = true) @Auth SingularityUser user
@@ -2195,8 +2152,7 @@ public class RequestResource extends AbstractRequestResource {
       .collect(Collectors.groupingBy(CrashLoopInfo::getRequestId));
   }
 
-  @GET
-  @Path("/request/{requestId}/crashloops")
+  @GetMapping("/request/{requestId}/crashloops")
   @Operation(summary = "Retrieve a map of all open crash loop details for all requests")
   public List<CrashLoopInfo> getCrashLoopsForRequest(
     @Parameter(hidden = true) @Auth SingularityUser user,
@@ -2217,12 +2173,11 @@ public class RequestResource extends AbstractRequestResource {
     return requestManager.getCrashLoopsForRequest(requestId);
   }
 
-  @HEAD
-  @Path("/request/{requestId}")
+  @RequestMapping(method = RequestMethod.HEAD, path = "/request/{requestId}")
   @Operation(
     summary = "Check if a request of specific ID exists and get the hash code of the SingularityRequest object"
   )
-  public Response headRequest(
+  public ResponseEntity<Object> headRequest(
     @Parameter(hidden = true) @Auth SingularityUser user,
     @Parameter(required = true, description = "The Request ID to check") @PathParam(
       "requestId"
@@ -2236,7 +2191,12 @@ public class RequestResource extends AbstractRequestResource {
       useWebCache
     );
     return requestWithState
-      .map(r -> Response.ok().header("ETag", r.getRequest().hashCode()).build())
-      .orElseGet(() -> Response.status(404).build());
+      .<ResponseEntity<Object>>map(r ->
+        ResponseEntity
+          .ok()
+          .header("ETag", String.valueOf(r.getRequest().hashCode()))
+          .build()
+      )
+      .orElseGet(() -> ResponseEntity.status(404).build());
   }
 }

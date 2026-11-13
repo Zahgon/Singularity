@@ -10,29 +10,27 @@ import com.hubspot.singularity.auth.SingularityAuthorizer;
 import com.hubspot.singularity.config.ApiPaths;
 import com.hubspot.singularity.config.OverrideConfiguration;
 import com.hubspot.singularity.config.SingularityConfiguration;
+import com.hubspot.singularity.web.Auth;
+import com.hubspot.singularity.web.PathParam;
 import com.ning.http.client.AsyncHttpClient;
-import io.dropwizard.auth.Auth;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.tags.Tags;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.Optional;
-import javax.servlet.http.HttpServletRequest;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
 import org.apache.curator.framework.recipes.leader.LeaderLatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-@Path(ApiPaths.CONFIGURATION_RESOURCE_PATH)
-@Produces({ MediaType.APPLICATION_JSON })
+@RestController
+@RequestMapping(ApiPaths.CONFIGURATION_RESOURCE_PATH)
 @Schema(title = "Exposes some live Singularity configuration")
 @Tags({ @Tag(name = "Singularity configuration") })
 public class SingularityConfigurationResource extends AbstractLeaderAwareResource {
@@ -58,60 +56,56 @@ public class SingularityConfigurationResource extends AbstractLeaderAwareResourc
     this.auth = authorizationHelper;
   }
 
-  @GET
-  @Path("/singularity-limits")
+  @GetMapping("/singularity-limits")
   @Operation(summary = "Retrieve configuration data for Singularity")
   public SingularityLimits getSingularityLimits() {
     return new SingularityLimits(config.getMaxDecommissioningAgents());
   }
 
-  @POST
-  @Path("/rack-sensitive/enable")
+  @PostMapping("/rack-sensitive/enable")
   @Operation(summary = "Enable global rack sensitivity, respecting request settings")
-  public Response enableGlobalRackSensitivity(
-    @Context HttpServletRequest requestContext,
+  public ResponseEntity<Object> enableGlobalRackSensitivity(
+    HttpServletRequest requestContext,
     @Parameter(hidden = true) @Auth SingularityUser user
   ) {
     return maybeProxyToLeader(
       requestContext,
-      Response.class,
+      ResponseEntity.class,
       null,
       () -> {
         auth.checkAdminAuthorization(user);
         LOG.info("Config override - allowRackSensitivity=true");
         overrides.setAllowRackSensitivity(true);
-        return Response.ok().build();
+        return ResponseEntity.ok().build();
       }
     );
   }
 
-  @POST
-  @Path("/rack-sensitive/disable")
+  @PostMapping("/rack-sensitive/disable")
   @Operation(summary = "Disable global rack sensitivity, overriding request settings")
-  public Response disableGlobalRackSensitivity(
-    @Context HttpServletRequest requestContext,
+  public ResponseEntity<Object> disableGlobalRackSensitivity(
+    HttpServletRequest requestContext,
     @Parameter(hidden = true) @Auth SingularityUser user
   ) {
     auth.checkAdminAuthorization(user);
     return maybeProxyToLeader(
       requestContext,
-      Response.class,
+      ResponseEntity.class,
       null,
       () -> {
         LOG.info("Config override - allowRackSensitivity=false");
         overrides.setAllowRackSensitivity(false);
-        return Response.ok().build();
+        return ResponseEntity.ok().build();
       }
     );
   }
 
-  @POST
-  @Path("/placement-strategy/override/set/{strategy}")
+  @PostMapping("/placement-strategy/override/set/{strategy}")
   @Operation(
     summary = "Set global placement strategy override, causing scheduling to ignore the default and request settings."
   )
-  public Response setPlacementStrategyOverride(
-    @Context HttpServletRequest requestContext,
+  public ResponseEntity<Object> setPlacementStrategyOverride(
+    HttpServletRequest requestContext,
     @Parameter(required = false, description = "Placement strategy name") @PathParam(
       "strategy"
     ) AgentPlacement strategy,
@@ -120,34 +114,33 @@ public class SingularityConfigurationResource extends AbstractLeaderAwareResourc
     auth.checkAdminAuthorization(user);
     return maybeProxyToLeader(
       requestContext,
-      Response.class,
+      ResponseEntity.class,
       null,
       () -> {
         LOG.info("Config override - agentPlacementOverride={}", strategy);
         overrides.setAgentPlacementOverride(Optional.ofNullable(strategy));
-        return Response.ok().build();
+        return ResponseEntity.ok().build();
       }
     );
   }
 
-  @POST
-  @Path("/placement-strategy/override/clear")
+  @PostMapping("/placement-strategy/override/clear")
   @Operation(
     summary = "Clear global placement strategy override, causing scheduling to respect the default and request settings."
   )
-  public Response disableSeparatePlacement(
-    @Context HttpServletRequest requestContext,
+  public ResponseEntity<Object> disableSeparatePlacement(
+    HttpServletRequest requestContext,
     @Parameter(hidden = true) @Auth SingularityUser user
   ) {
     auth.checkAdminAuthorization(user);
     return maybeProxyToLeader(
       requestContext,
-      Response.class,
+      ResponseEntity.class,
       null,
       () -> {
         LOG.info("Config override - agentPlacementOverride=");
         overrides.setAgentPlacementOverride(Optional.empty());
-        return Response.ok().build();
+        return ResponseEntity.ok().build();
       }
     );
   }

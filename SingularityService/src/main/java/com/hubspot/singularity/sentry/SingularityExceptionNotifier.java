@@ -3,36 +3,27 @@ package com.hubspot.singularity.sentry;
 import com.google.common.base.Strings;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
-import com.google.inject.name.Named;
-import com.hubspot.singularity.SingularityMainModule;
 import com.hubspot.singularity.config.SentryConfiguration;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
 import javax.inject.Singleton;
-import javax.servlet.http.HttpServletRequest;
 import net.kencochrane.raven.Raven;
 import net.kencochrane.raven.RavenFactory;
 import net.kencochrane.raven.event.Event;
 import net.kencochrane.raven.event.EventBuilder;
 import net.kencochrane.raven.event.interfaces.ExceptionInterface;
-import net.kencochrane.raven.event.interfaces.HttpInterface;
 
 @Singleton
 public class SingularityExceptionNotifier {
   private final Optional<Raven> raven;
   private final Optional<SentryConfiguration> sentryConfiguration;
-  private final Provider<Optional<HttpServletRequest>> requestProvider;
 
   @Inject
   public SingularityExceptionNotifier(
-    Optional<SentryConfiguration> sentryConfiguration,
-    @Named(
-      SingularityMainModule.CURRENT_HTTP_REQUEST
-    ) Provider<Optional<HttpServletRequest>> requestProvider
+    Optional<SentryConfiguration> sentryConfiguration
   ) {
     this.sentryConfiguration = sentryConfiguration;
-    this.requestProvider = requestProvider;
     if (sentryConfiguration.isPresent()) {
       this.raven =
         Optional.of(RavenFactory.ravenInstance(sentryConfiguration.get().getDsn()));
@@ -86,12 +77,6 @@ public class SingularityExceptionNotifier {
       .withLogger(getCallingClassName(currentThreadStackTrace))
       .withSentryInterface(new ExceptionInterface(t));
 
-    final Optional<HttpServletRequest> maybeRequest = requestProvider.get();
-
-    if (maybeRequest.isPresent()) {
-      eventBuilder.withSentryInterface(new HttpInterface(maybeRequest.get()));
-    }
-
     if (extraData != null && !extraData.isEmpty()) {
       for (Map.Entry<String, String> entry : extraData.entrySet()) {
         eventBuilder.withExtra(entry.getKey(), entry.getValue());
@@ -118,12 +103,6 @@ public class SingularityExceptionNotifier {
       .withMessage(getPrefix() + subject)
       .withLevel(Event.Level.ERROR)
       .withLogger(getCallingClassName(currentThreadStackTrace));
-
-    final Optional<HttpServletRequest> maybeRequest = requestProvider.get();
-
-    if (maybeRequest.isPresent()) {
-      eventBuilder.withSentryInterface(new HttpInterface(maybeRequest.get()));
-    }
 
     if (extraData != null && !extraData.isEmpty()) {
       for (Map.Entry<String, String> entry : extraData.entrySet()) {

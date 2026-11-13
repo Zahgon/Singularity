@@ -26,6 +26,7 @@ import com.hubspot.mesos.JavaUtils;
 import com.hubspot.singularity.config.CustomExecutorConfiguration;
 import com.hubspot.singularity.config.HistoryPurgingConfiguration;
 import com.hubspot.singularity.config.MesosConfiguration;
+import com.hubspot.singularity.config.server.ConnectorConfiguration;
 import com.hubspot.singularity.config.OverrideConfiguration;
 import com.hubspot.singularity.config.S3Configuration;
 import com.hubspot.singularity.config.S3GroupConfiguration;
@@ -35,7 +36,6 @@ import com.hubspot.singularity.config.SingularityConfiguration;
 import com.hubspot.singularity.config.SingularityTaskMetadataConfiguration;
 import com.hubspot.singularity.config.UIConfiguration;
 import com.hubspot.singularity.config.ZooKeeperConfiguration;
-import com.hubspot.singularity.guice.DropwizardMetricRegistryProvider;
 import com.hubspot.singularity.helpers.SingularityS3Service;
 import com.hubspot.singularity.helpers.SingularityS3Services;
 import com.hubspot.singularity.hooks.AbstractWebhookChecker;
@@ -56,7 +56,6 @@ import com.hubspot.singularity.metrics.SingularityGraphiteReporter;
 import com.hubspot.singularity.resources.SingularityServiceUIModule;
 import com.hubspot.singularity.scheduler.SingularityLeaderOnlyPoller;
 import com.hubspot.singularity.scheduler.SingularityUsageHelper;
-import com.hubspot.singularity.sentry.NotifyingExceptionMapper;
 import com.hubspot.singularity.sentry.SingularityExceptionNotifier;
 import com.hubspot.singularity.sentry.SingularityExceptionNotifierManaged;
 import com.hubspot.singularity.smtp.MailTemplateHelpers;
@@ -69,11 +68,6 @@ import com.ning.http.client.AsyncHttpClient;
 import de.neuland.jade4j.JadeConfiguration;
 import de.neuland.jade4j.template.ClasspathTemplateLoader;
 import de.neuland.jade4j.template.JadeTemplate;
-import io.dropwizard.jetty.ConnectorFactory;
-import io.dropwizard.jetty.HttpConnectorFactory;
-import io.dropwizard.jetty.HttpsConnectorFactory;
-import io.dropwizard.server.DefaultServerFactory;
-import io.dropwizard.server.SimpleServerFactory;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -85,7 +79,6 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import javax.inject.Inject;
 import javax.inject.Provider;
-import javax.servlet.http.HttpServletRequest;
 import okhttp3.OkHttpClient;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.recipes.leader.LeaderLatch;
@@ -103,8 +96,6 @@ public class SingularityMainModule implements Module {
   public static final String HOST_NAME_PROPERTY = "singularity.host.name";
 
   public static final String HTTP_HOST_AND_PORT = "http.host.and.port";
-
-  public static final String CURRENT_HTTP_REQUEST = "_singularity_current_http_request";
 
   public static final String LOST_TASKS_METER = "singularity.lost.tasks.meter";
   public static final String UNSCHEDULED_TASKS_METER =
@@ -181,13 +172,6 @@ public class SingularityMainModule implements Module {
 
     binder.bind(SingularityUsageHelper.class).in(Scopes.SINGLETON);
 
-    binder.bind(NotifyingExceptionMapper.class).in(Scopes.SINGLETON);
-
-    binder
-      .bind(MetricRegistry.class)
-      .toProvider(DropwizardMetricRegistryProvider.class)
-      .in(Scopes.SINGLETON);
-
     binder
       .bind(AsyncHttpClient.class)
       .to(SingularityAsyncHttpClient.class)
@@ -258,29 +242,14 @@ public class SingularityMainModule implements Module {
       checkNotNull(configuration, "configuration is null");
       this.hostname = configuration.getHostname().orElse(hostname);
 
-      Integer port = null;
-      if (configuration.getServerFactory() instanceof SimpleServerFactory) {
-        SimpleServerFactory simpleServerFactory = (SimpleServerFactory) configuration.getServerFactory();
-        HttpConnectorFactory httpFactory = (HttpConnectorFactory) simpleServerFactory.getConnector();
-
-        port = httpFactory.getPort();
-      } else {
-        DefaultServerFactory defaultServerFactory = (DefaultServerFactory) configuration.getServerFactory();
-        for (ConnectorFactory connectorFactory : defaultServerFactory.getApplicationConnectors()) {
-          // Currently we will default to needing an http connector for service -> service communication
-          if (
-            connectorFactory instanceof HttpConnectorFactory &&
-            !(connectorFactory instanceof HttpsConnectorFactory)
-          ) {
-            HttpConnectorFactory httpFactory = (HttpConnectorFactory) connectorFactory;
-            port = httpFactory.getPort();
-          }
-        }
-      }
-      if (port == null) {
+      // Currently we will default to needing an http connector for service -> service communication
+      ConnectorConfiguration connector = configuration
+        .getServerConfiguration()
+        .getApplicationConnector();
+      if (connector == null || connector.isHttps()) {
         throw new RuntimeException("Could not determine http port");
       }
-      this.httpPort = port;
+      this.httpPort = connector.getPort();
     }
 
     @Override
@@ -292,28 +261,10 @@ public class SingularityMainModule implements Module {
   @Provides
   @Named(SingularityServiceUIModule.SINGULARITY_URI_BASE)
   String getSingularityUriBase(final SingularityConfiguration configuration) {
-    final String singularityUiPrefix;
-    if (configuration.getServerFactory() instanceof SimpleServerFactory) {
-      singularityUiPrefix =
-        configuration
-          .getUiConfiguration()
-          .getBaseUrl()
-          .orElse(
-            (
-              (SimpleServerFactory) configuration.getServerFactory()
-            ).getApplicationContextPath()
-          );
-    } else {
-      singularityUiPrefix =
-        configuration
-          .getUiConfiguration()
-          .getBaseUrl()
-          .orElse(
-            (
-              (DefaultServerFactory) configuration.getServerFactory()
-            ).getApplicationContextPath()
-          );
-    }
+    final String singularityUiPrefix = configuration
+      .getUiConfiguration()
+      .getBaseUrl()
+      .orElse(configuration.getServerConfiguration().getApplicationContextPath());
     return (singularityUiPrefix.endsWith("/"))
       ? singularityUiPrefix.substring(0, singularityUiPrefix.length() - 1)
       : singularityUiPrefix;
@@ -488,18 +439,6 @@ public class SingularityMainModule implements Module {
   @Named(DISASTERS_TEMPLATE)
   public JadeTemplate getDisastersTemplate() throws IOException {
     return getJadeTemplate("disaster");
-  }
-
-  @Provides
-  @Named(CURRENT_HTTP_REQUEST)
-  public Optional<HttpServletRequest> providesUrl(
-    Provider<HttpServletRequest> requestProvider
-  ) {
-    try {
-      return Optional.of(requestProvider.get());
-    } catch (ProvisionException pe) { // this will happen if we're not in the REQUEST scope
-      return Optional.empty();
-    }
   }
 
   @Provides

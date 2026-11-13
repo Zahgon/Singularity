@@ -12,7 +12,10 @@ import com.hubspot.singularity.config.ApiPaths;
 import com.hubspot.singularity.config.SingularityConfiguration;
 import com.hubspot.singularity.data.AuthTokenManager;
 import com.hubspot.singularity.data.UserManager;
-import io.dropwizard.auth.Auth;
+import com.hubspot.singularity.web.Auth;
+import com.hubspot.singularity.web.DefaultValue;
+import com.hubspot.singularity.web.PathParam;
+import com.hubspot.singularity.web.QueryParam;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -22,19 +25,15 @@ import io.swagger.v3.oas.annotations.tags.Tags;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Optional;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-@Path(ApiPaths.AUTH_RESOURCE_PATH)
-@Produces({ MediaType.APPLICATION_JSON })
+@RestController
+@RequestMapping(ApiPaths.AUTH_RESOURCE_PATH)
 @Schema(title = "Verify authentication for a user")
 @Tags({ @Tag(name = "Auth") })
 public class AuthResource {
@@ -59,8 +58,7 @@ public class AuthResource {
     this.authTokenManager = authTokenManager;
   }
 
-  @GET
-  @Path("/user")
+  @GetMapping("/user")
   @Operation(summary = "Get information about the currently authenticated user")
   public SingularityUserHolder getUser(
     @Parameter(hidden = true) @Auth SingularityUser user
@@ -73,8 +71,7 @@ public class AuthResource {
     );
   }
 
-  @GET
-  @Path("/{requestId}/auth-check/{userId}")
+  @GetMapping("/{requestId}/auth-check/{userId}")
   @Operation(
     summary = "Check if the specified user is authorized for a request",
     responses = {
@@ -84,7 +81,7 @@ public class AuthResource {
       )
     }
   )
-  public Response checkReadOnlyAuth(
+  public ResponseEntity<Object> checkReadOnlyAuth(
     @Parameter(required = true, description = "Request id to check") @PathParam(
       "requestId"
     ) String requestId,
@@ -100,11 +97,10 @@ public class AuthResource {
       authDatastore.getUser(userId).orElse(SingularityUser.DEFAULT_USER),
       scope.orElse(SingularityAuthorizationScope.READ)
     );
-    return Response.ok().build();
+    return ResponseEntity.ok().build();
   }
 
-  @GET
-  @Path("/{requestId}/auth-check")
+  @GetMapping("/{requestId}/auth-check")
   @Operation(
     summary = "Check if the specified user is authorized for a request",
     responses = {
@@ -114,7 +110,7 @@ public class AuthResource {
       )
     }
   )
-  public Response checkReadOnlyAuth(
+  public ResponseEntity<Object> checkReadOnlyAuth(
     @Parameter(hidden = true) @Auth SingularityUser user,
     @Parameter(required = true, description = "Request id to check") @PathParam(
       "requestId"
@@ -128,11 +124,10 @@ public class AuthResource {
       user,
       scope.orElse(SingularityAuthorizationScope.READ)
     );
-    return Response.ok().build();
+    return ResponseEntity.ok().build();
   }
 
-  @POST
-  @Path("/token")
+  @PostMapping("/token")
   @Operation(
     summary = "Generate a new auth token for the provided user data, or for current authed user if no user provided in post body. Only one token can be active for a user at a time",
     responses = {
@@ -160,21 +155,20 @@ public class AuthResource {
     }
   }
 
-  @DELETE
-  @Path("/token/{user}")
+  @DeleteMapping("/token/{user}")
   @Operation(
     summary = "Clear tokens for a user",
     responses = {
       @ApiResponse(responseCode = "200", description = "tokens cleared successfully")
     }
   )
-  public Response generateToken(
+  public ResponseEntity<Object> generateToken(
     @Parameter(hidden = true) @Auth SingularityUser user,
     @PathParam("user") String userName
   )
     throws NoSuchAlgorithmException, InvalidKeySpecException {
     authorizationHelper.checkAdminAuthorization(user);
     authTokenManager.clearTokensForUser(userName);
-    return Response.ok().build();
+    return ResponseEntity.ok().build();
   }
 }

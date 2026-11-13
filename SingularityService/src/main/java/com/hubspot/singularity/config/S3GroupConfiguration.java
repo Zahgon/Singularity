@@ -1,7 +1,7 @@
 package com.hubspot.singularity.config;
 
 import java.util.Objects;
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull;
 
 public class S3GroupConfiguration {
   @NotNull
